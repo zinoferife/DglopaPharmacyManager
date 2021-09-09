@@ -12,7 +12,7 @@
 #include <map>
 #include <unordered_map>
 #include <string>
-
+#include "Tables.h"
 #include <wx/wxprec.h>
 #ifndef  WX_PRECOMP
 #include <wx/wx.h>

@@ -1,5 +1,6 @@
 #include "common.h"
 #include "Application.h"
+
 IMPLEMENT_APP(Application)
 
 wxString wxFindAppPath(const wxString& argv0, const wxString& cwd, const wxString& appVariableName,
@@ -70,6 +71,10 @@ wxString wxFindAppPath(const wxString& argv0, const wxString& cwd, const wxStrin
 
 bool Application::OnInit()
 {
+	//find working directory
+	wxString curDir = wxGetCwd();
+	gApplicationPath = wxFindAppPath(argv[0], curDir, wxT("APMANAGER"), wxT("Afrobug pharamacy manager"));
+
 	MainFrame* frame = new MainFrame(nullptr, wxID_ANY, wxDefaultPosition, wxSize(990, 750));
 	frame->CenterOnScreen();
 	frame->Show();

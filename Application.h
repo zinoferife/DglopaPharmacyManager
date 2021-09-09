@@ -7,7 +7,7 @@ class Application : public wxApp
 public:
 	Application() {}
 	bool virtual OnInit() override;
-
+	std::string gApplicationPath;
 
 };
 
