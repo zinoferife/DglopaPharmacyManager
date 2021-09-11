@@ -172,3 +172,28 @@ public:
 		user_checked
 	};
 };
+/*--------------------------------------------------------------- Users-------------------------------------------------------------------------*/
+class Users : public nl::vector_table<std::uint64_t, //user_id
+	std::string, //surname
+	std::string, // name
+	std::string, // phone number
+	std::uint64_t> // password hash
+{
+public:
+	BEGIN_COL_NAME("users")
+		COL_NAME("id")
+		COL_NAME("surname")
+		COL_NAME("name")
+		COL_NAME("phone_number")
+		COL_NAME("password_hash")
+	END_COL_NAME()
+	IMPLEMENT_GET_COL_NAME()
+	enum
+	{
+		id = 0,
+		surname,
+		name,
+		phone_number,
+		password_hash
+	};
+};

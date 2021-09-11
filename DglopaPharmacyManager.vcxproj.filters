@@ -44,13 +44,16 @@
     <ClInclude Include="Tables.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ListControlFunctions.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Instances.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DataView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Views.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ProductsView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

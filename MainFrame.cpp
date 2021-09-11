@@ -4,6 +4,9 @@
 
 BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 EVT_CLOSE(MainFrame::OnClose)
+EVT_LIST_ITEM_SELECTED(MainFrame::DATA_VIEW, MainFrame::OnItemSelected)
+EVT_LIST_ITEM_ACTIVATED(MainFrame::DATA_VIEW, MainFrame::OnItemActivated)
+EVT_LIST_ITEM_RIGHT_CLICK(MainFrame::DATA_VIEW, MainFrame::OnRightClicked)
 END_EVENT_TABLE()
 
 
@@ -12,9 +15,9 @@ MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, c
 	mFrameManager = std::make_unique<wxAuiManager>(this);
 	CreateLogBook();
 	mLog->info("Main frame constructor");
-	CreateTables();
-	CreateList();
-	Test();
+
+	CreateDefaultView();
+
 	mFrameManager->Update();
 	mLog->info("Main frame constructed sucessfully");
 }
@@ -25,6 +28,36 @@ MainFrame::~MainFrame()
 	{
 		mFrameManager->UnInit();
 	}
+}
+
+void MainFrame::OnCacheHint(wxListEvent& event)
+{
+	mDataView->OnCacheHint(event);
+}
+
+void MainFrame::OnItemSelected(wxListEvent& event)
+{
+	mDataView->OnItemSelected(event);
+}
+
+void MainFrame::OnColumnClicked(wxListEvent& event)
+{
+	mDataView->OnColumnClicked(event);
+}
+
+void MainFrame::OnColumnRightClicked(wxListEvent& event)
+{
+	mDataView->OnColumnRightClicked(event);
+}
+
+void MainFrame::OnRightClicked(wxListEvent& evt)
+{
+	mDataView->OnRightClicked(evt);
+}
+
+void MainFrame::OnItemActivated(wxListEvent& evt)
+{
+	mDataView->OnItemActivated(evt);
 }
 
 void MainFrame::CreateList()
@@ -60,27 +93,28 @@ void MainFrame::Test()
 	
 }
 
-void MainFrame::CreateTables()
+void MainFrame::CreateDefaultView()
 {
-	products.as<Products::id>("Serial number");
-	products.as<Products::name>("Name");
-	products.as<Products::package_size>("Package size");
-	products.as<Products::stock_count>("Stock count");
-	products.as<Products::unit_price>("Unit price");
-	products.as<Products::category_id>("Category id");
+	ProductInstance::instance().as<Products::id>("Serial number");
+	ProductInstance::instance().as<Products::name>("Name");
+	ProductInstance::instance().as<Products::package_size>("Package size");
+	ProductInstance::instance().as<Products::stock_count>("Stock count");
+	ProductInstance::instance().as<Products::unit_price>("Unit price");
+	ProductInstance::instance().as<Products::category_id>("Category id");
 
-
-	new_list = new wxListCtrl(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT | wxLC_HRULES | wxLC_VRULES);
 	Products::set_default_row(100, "test", 0, 0, "0.00", 9);
 	for (int i = 0; i < 100; i++)
 	{
-		products.add_default();
+		ProductInstance::instance().add_default();
 	}
-
-	prepare_list(new_list, products);
-	ShowList(products, new_list);
-	mFrameManager->AddPane(new_list, wxAuiPaneInfo().Name("List").Caption("Product").Left());
+	mDataView = std::make_unique<DataView>(this, DATA_VIEW);
+	mDataView->SetItemCount(1000);
+	mFrameManager->AddPane(mDataView.get(), wxAuiPaneInfo().Name("List").Caption("Product").CenterPane());
 	mFrameManager->Update();
+}
+
+void MainFrame::CreateTables()
+{
 }
 
 

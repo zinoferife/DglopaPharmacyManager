@@ -13,7 +13,8 @@
 #include <table.h>
 #include <memory>
 #include "Tables.h"
-#include "ListControlFunctions.h"
+#include "Instances.h"
+#include "DataView.h"
 
 constexpr const char* database_file_path = "C:\\Users\\ferif\\source\\repos\\SQLearn\\test2.db";
 using namespace std::literals::string_literals;
@@ -25,13 +26,24 @@ public:
 
 	enum
 	{
-		LOG_BOOK = wxID_HIGHEST + 1
+		LOG_BOOK = wxID_HIGHEST + 1,
+		DATA_VIEW
 
 	};
 
 	MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size);
 	virtual ~MainFrame();
-	
+
+//list events
+private:
+	void OnCacheHint(wxListEvent& event);
+	void OnItemSelected(wxListEvent& event);
+	void OnColumnClicked(wxListEvent& event);
+	void OnColumnRightClicked(wxListEvent& evnet);
+	void OnRightClicked(wxListEvent& evt);
+	void OnItemActivated(wxListEvent& evt);
+
+
 public:
 	void CreateList();
 	void CreateLogBook();
@@ -39,6 +51,7 @@ public:
 	void CreateMenuBar();
 	void CreateStatusBar();
 	void Test();
+	void CreateDefaultView();
 	void CreateTables();
 	
 	inline std::shared_ptr<spdlog::logger>& GetLogger()
@@ -51,6 +64,7 @@ private:
 	std::unique_ptr<wxListCtrl> mList;
 	std::shared_ptr<wxTextCtrl> mLogBook;
 	std::unique_ptr<wxAuiManager> mFrameManager;
+	std::unique_ptr<DataView> mDataView;
 	std::shared_ptr<spdlog::logger> mLog;
 	nl::database_connection connection{database_file_path};
 	DECLARE_EVENT_TABLE()
