@@ -62,33 +62,18 @@ public:
 	static constexpr size_t ColumnCount = Products::column_count;
 	virtual ~ViewHandler() {}
 
+	ViewHandler()
+	{
+		//default attributes
+		mAttrs[1].SetBackgroundColour(*wxRED);
+	}
+
 	virtual void CreateList(Products& data, wxListCtrl* control)
 	{
 		std::shared_ptr<spdlog::logger> mLog = spdlog::get("log");
 		if (control)
 		{
 			control->ClearAll();
-			//check if database is open
-			if (!IsInit && DatabaseInstance::instance().is_open())
-			{
-				//read table from database
-				if (data.empty())
-				{
-					auto statement = DatabaseInstance::instance().prepare_query(nl::query().select("*").from(Products::table_name));
-					if (statement == nl::database_connection::BADSTMT) {
-						mLog->error("PRODUCT_VIEW: bad query statement for database");
-						return; 
-					}
-					data = DatabaseInstance::instance().retrive<Products>(statement);
-					DatabaseInstance::instance().remove_statement(statement);
-					if (data.empty()) {
-						mLog->error("PRODUCT_VIEW:{}", DatabaseInstance::instance().get_error_msg());
-					}
-					mLog->info("PRODUCT_VIEW: data retrived from the database");
-				}
-				ByCategories = data.map_group_by<Products::category_id>();
-				IsInit = true;
-			}
 			for (size_t i = 0; i < Products::column_count - 1; i++)
 			{
 				wxListItem itemCol;
@@ -97,6 +82,7 @@ public:
 				control->SetColumnWidth(i, wxLIST_AUTOSIZE_USEHEADER);
 				control->InsertColumn(i, itemCol);
 			}
+			control->SetItemCount(data.size());
 		}
 		else
 		{
@@ -139,16 +125,12 @@ public:
 		std::shared_ptr<spdlog::logger> log = spdlog::get("log");
 		if (control)
 		{
-			wxListItem i;
-			const wxListItem& item = evt.GetItem();
-			if (item.GetId() != -1)
+			long index = evt.m_itemIndex;
+			if (index != -1)
 			{
-				i.SetId(item.GetId());
-				i.SetMask(wxLIST_MASK_STATE);
-				i.SetState(wxLIST_STATE_SELECTED);
-				i.SetBackgroundColour(*wxRED);
-				control->SetItem(i);
-				log->info("{}, was selected", item.GetId());
+				mSelected = index;
+				control->RefreshItem(index);
+				log->info("{}, was selected", index);
 			}
 		}
 	}
@@ -157,15 +139,20 @@ public:
 		std::shared_ptr<spdlog::logger> log = spdlog::get("log");
 		if (control)
 		{
-			const wxListItem& item = evt.GetItem();
-			control->SetItemBackgroundColour(item.GetId(), wxColour(139, 69, 19));
-			log->info("{}, was Activated", item.GetId());
+			long index = evt.m_itemIndex;
+			if (index == -1)
+			{
+				log->info("{}, was Activated", index);
+				return;
+			}
+			mSelected = index;
+			control->RefreshItem(index);
+			log->info("{}, was Activated", index);
 		}
 	}
 
 	virtual wxString OnGetItemText(Products& data, long item, long column) const
 	{
-		if (item >= 100) return wxString();
 		switch (column)
 		{
 		case Products::id:
@@ -194,12 +181,17 @@ public:
 
 	virtual wxItemAttr* OnGetItemColumnAttr(Products& data, long item, long column) const 
 	{
-		return ((wxItemAttr*)&mAttribute);
+		return ((wxItemAttr*)&mAttrs[0]);
 	}
 
-	virtual wxItemAttr* OnGetItemAttr(Products& data, long item) const {
+	virtual wxListItemAttr* OnGetItemAttr(Products& data, long item) const {
 		//get item attributes here, test the state and send attributes bassed on that
-		return ((wxItemAttr*)&mAttribute);
+		//seleteced attribute
+		if (mSelected == item)
+		{
+			return ((wxListItemAttr*)& mAttrs[1]);
+		}
+		return ((wxListItemAttr*)& mAttrs[0]);
 	}
 
 	virtual bool OnGetItemIsChecked(Products& data, long item) const {
@@ -211,6 +203,7 @@ public:
 private:
 	//should be false, true is for test
 	bool IsInit{ true };
-	std::unordered_map<Categories::elem_t<Categories::id>,typename Products::relation_t> ByCategories;
-	wxItemAttr mAttribute{};
+	long mSelected{-1};
+	std::unordered_map<Categories::elem_t<Categories::id>, typename Products::relation_t> ByCategories{};
+	std::array<wxListItemAttr, 4> mAttrs{};
 };

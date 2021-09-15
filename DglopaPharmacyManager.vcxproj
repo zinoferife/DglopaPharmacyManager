@@ -166,6 +166,7 @@
     <ClCompile Include="DataView.cpp" />
     <ClCompile Include="LogSink.cpp" />
     <ClCompile Include="MainFrame.cpp" />
+    <ClCompile Include="MainView.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
@@ -174,7 +175,9 @@
     <ClInclude Include="Instances.h" />
     <ClInclude Include="LogSink.h" />
     <ClInclude Include="MainFrame.h" />
+    <ClInclude Include="MainView.h" />
     <ClInclude Include="ProductsView.h" />
+    <ClInclude Include="SalesView.h" />
     <ClInclude Include="Tables.h" />
     <ClInclude Include="Views.h" />
   </ItemGroup>

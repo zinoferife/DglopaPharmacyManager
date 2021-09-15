@@ -7,6 +7,7 @@
 
 #include "Views.h"
 #include "ProductsView.h"
+#include "SalesView.h"
 #include <hierarchy_creation.h>
 
 //all the types of views thats a list
@@ -17,16 +18,8 @@ typedef nl::detail::gen_linear_hierarchy<views, ViewHandler> TheViews;
 class DataView : public wxListCtrl, public TheViews
 {
 public:
-	typedef size_t view_t;
-	struct ViewEvent
-	{
-		std::string mDescription;
-		view_t mEventFor;
-	};
-
 	DataView(wxWindow* parent, wxWindowID id, const wxPoint& position = wxDefaultPosition,
-		const wxSize& size = wxDefaultSize, long style = wxLC_REPORT | wxLC_VIRTUAL | wxLC_HRULES);
-
+		const wxSize& size = wxDefaultSize, long style = wxLC_REPORT | wxLC_VIRTUAL);
 	virtual ~DataView();
 
 	//contants for imagelist
@@ -35,10 +28,14 @@ public:
 
 	};
 
-	enum Views
+	enum class Views
 	{
-		Product_v
+		Product_view,
+		Sale_view
 	};
+
+
+	void ChangeView(Views view);
 public:
 //list events
 	void OnCacheHint(wxListEvent& event);
@@ -48,21 +45,26 @@ public:
 	void OnRightClicked(wxListEvent& evt);
 	void OnItemActivated(wxListEvent& evt);
 protected:
-	virtual wxString OnGetItemText(long item, long column) const;
-	virtual int OnGetItemImage(long item) const;
-	virtual int OnGetItemColumnImage(long item, long column) const;
-	virtual wxItemAttr* OnGetItemColumnAttr(long item, long column) const;
-	virtual wxItemAttr* OnGetItemAttr(long item) const;
-	virtual bool OnGetItemIsChecked(long item) const;
+	virtual wxString OnGetItemText(long item, long column) const override;
+	virtual int OnGetItemImage(long item) const override;
+	virtual int OnGetItemColumnImage(long item, long column) const override;
+	virtual wxListItemAttr* OnGetItemAttr(long item) const override;
+	virtual bool OnGetItemIsChecked(long item) const override;
 public:
+	void OnProductTableNotification(nl::notifications notif, typename Products::table_t& data,
+		const typename Products::row_t& row);
+	
+	void OnSaleTableNotification(nl::notifications notif, typename Sales::table_t& data,
+		const typename Sales::row_t& row);
+
 	void SetColumnImage(size_t colunm, int image);
 	void CreateImageList();
 private:
 	void ResetList();
 	void DoSelectView();
-
+	                                                                                                                                                           
 private:
-	view_t mCurrentView;
+	Views mCurrentView;
 	int i;
 	wxItemAttr mDefaultAttr;
 	DECLARE_EVENT_TABLE()

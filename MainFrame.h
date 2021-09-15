@@ -2,19 +2,28 @@
 #include "common.h"
 #include <wx/listctrl.h>
 #include <wx/aui/framemanager.h>
+#include <wx/aboutdlg.h>
+
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
-#include "LogSink.h"
-#include <Database.h>
 #include <string>
-#include <Singleton.h>
+#include <memory>
 
+//nl stuff
+#include <Singleton.h>
+#include <Database.h>
 #include <relation.h>
 #include <table.h>
-#include <memory>
+#include <nl_time.h>
+
+
+#include "LogSink.h"
 #include "Tables.h"
 #include "Instances.h"
 #include "DataView.h"
+
+#include "MainView.h"
+
 
 constexpr const char* database_file_path = "C:\\Users\\ferif\\source\\repos\\SQLearn\\test2.db";
 using namespace std::literals::string_literals;
@@ -27,52 +36,48 @@ public:
 	enum
 	{
 		LOG_BOOK = wxID_HIGHEST + 1,
-		DATA_VIEW
+		DATA_VIEW,
+		MAIN_VIEW
+	};
 
+	//menu ID
+	enum
+	{
+		ID_BACK_UP_DATA,
+		ID_NEW_PRODUCT,
+		ID_PRODUCT_SEARCH
 	};
 
 	MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size);
 	virtual ~MainFrame();
 
-//list events
+
 private:
-	void OnCacheHint(wxListEvent& event);
-	void OnItemSelected(wxListEvent& event);
-	void OnColumnClicked(wxListEvent& event);
-	void OnColumnRightClicked(wxListEvent& evnet);
-	void OnRightClicked(wxListEvent& evt);
-	void OnItemActivated(wxListEvent& evt);
-
-
-public:
-	void CreateList();
 	void CreateLogBook();
 	void CreateToolBar();
 	void CreateMenuBar();
 	void CreateStatusBar();
-	void Test();
 	void CreateDefaultView();
 	void CreateTables();
-	
-	inline std::shared_ptr<spdlog::logger>& GetLogger()
-	{return mLog;}
+	void CreateMainView();
+	void CreateDatabase();
+	void SetMainFrameArt();
 
 private:
-	void OnClose(wxCloseEvent& event);
-
-private:
-	std::unique_ptr<wxListCtrl> mList;
+	std::unique_ptr<MainView> mMainView;
 	std::shared_ptr<wxTextCtrl> mLogBook;
 	std::unique_ptr<wxAuiManager> mFrameManager;
-	std::unique_ptr<DataView> mDataView;
 	std::shared_ptr<spdlog::logger> mLog;
-	nl::database_connection connection{database_file_path};
-	DECLARE_EVENT_TABLE()
-private:
-	Products products;
-	Categories categories;
 
-	wxListCtrl* new_list;
+
+//main frame event handlers
+private:
+	void OnAbout(wxCommandEvent& evt);
+	void OnClose(wxCloseEvent& event);
+
+
+private:
+	
 
 	//debug
 	template<typename func>
@@ -84,5 +89,7 @@ private:
 		float run = std::chrono::duration<float, std::chrono::milliseconds::period>(stop - start).count();
 		mLog->info("{}: {}ms", text, run);
 	}
+
+	DECLARE_EVENT_TABLE()
 };
 

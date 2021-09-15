@@ -1,6 +1,7 @@
 #pragma once
 #include "common.h"
 #include <table.h>
+#include <nl_time.h>
 //holds all the tables in the system for now
 
 /*--------------------------------------------------------------- Products -------------------------------------------------------------------------*/
@@ -109,7 +110,7 @@ class Sales : public nl::vector_table<std::uint64_t, // sale id
 	std::uint64_t, //customer id,
 	std::uint64_t, //user id,
 	std::uint32_t, //amount
-	std::string, //date
+	nl::date_time_t, //date
 	std::string> //price
 {
 public:
@@ -136,9 +137,9 @@ public:
 };
 
 /*--------------------------------------------------------------- Inventories-------------------------------------------------------------------------*/
-class Inventories : public nl::vector_table<std::uint64_t, //inventory id
+class Inventories : public nl::vector_table < std::uint64_t, //inventory id
 	std::uint64_t, //product_id
-	std::string, //date
+	nl::date_time_t , //date
 	std::uint64_t, //invoice way bill no
 	std::uint32_t, // quantity in
 	std::uint32_t, // quantity out
