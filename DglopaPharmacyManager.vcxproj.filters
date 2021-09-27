@@ -24,10 +24,19 @@
     <ClCompile Include="LogSink.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DataView.cpp">
+    <ClCompile Include="DataModel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ArtProvider.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MainView.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ProductView.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TableMonoState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -50,19 +59,22 @@
     <ClInclude Include="Instances.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DataView.h">
+    <ClInclude Include="DataModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Views.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ProductsView.h">
+    <ClInclude Include="ArtProvider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="MainView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SalesView.h">
+    <ClInclude Include="DataModelBase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ProductView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TableMonoState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

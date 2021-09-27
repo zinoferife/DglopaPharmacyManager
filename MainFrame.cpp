@@ -4,22 +4,27 @@
 
 BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 EVT_CLOSE(MainFrame::OnClose)
+EVT_ERASE_BACKGROUND(MainFrame::onEraseBackground)
 EVT_MENU(wxID_ABOUT, MainFrame::OnAbout)
 END_EVENT_TABLE()
 
 
 MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size)
-: wxFrame(parent,id, "Afrobug pharmacy manager", position, size){
+: wxFrame(parent,id, "Afrobug PharmaOffice", position, size){
 	mFrameManager = std::make_unique<wxAuiManager>(this);
 	CreateLogBook();
+	SetMainFrameArt();
+	Settings();
+	wxArtProvider::Push(new ArtProvider);
 	CreateMenuBar();
-
+	CreateToolBar();
 	
 	mLog->info("Main frame constructor");
 	mLog->info("Creating database");
 	CreateDatabase();
-	mLog->info("Creating main view");
-	CreateMainView();
+
+	mLog->info("Creating Main view");
+	CreateDataView();
 
 	mFrameManager->Update();
 	mLog->info("Main frame constructed sucessfully");
@@ -31,6 +36,7 @@ MainFrame::~MainFrame()
 	{
 		mFrameManager->UnInit();
 	}
+	mFrameManager.reset(nullptr);
 }
 
 
@@ -45,6 +51,14 @@ void MainFrame::CreateLogBook()
 
 void MainFrame::CreateToolBar()
 {
+	wxAuiToolBar* toolbar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW);
+	toolbar->SetToolBitmapSize(wxSize(16, 16));
+	toolbar->AddStretchSpacer();
+	toolbar->AddTool(ID_TOOL_DOWNLOAD_DATA, wxT("Download data"), wxArtProvider::GetBitmap("download"));
+	toolbar->AddTool(ID_TOOL_USER, wxT("User"), wxArtProvider::GetBitmap("user"));
+	toolbar->Realize();
+	mFrameManager->AddPane(toolbar, wxAuiPaneInfo().Name(wxT("Tool")).Caption(wxT("Tool bar"))
+		.ToolbarPane().Top().DockFixed().Resizable().Row(1).LeftDockable(false).RightDockable(false).Floatable(false).BottomDockable(false));
 }
 
 void MainFrame::CreateMenuBar()
@@ -72,42 +86,21 @@ void MainFrame::CreateStatusBar()
 }
 
 
-void MainFrame::CreateDefaultView()
-{
-	DatabaseInstance::instance(database_file_path);
-	ProductInstance::instance().as<Products::id>("Serial number");
-	ProductInstance::instance().as<Products::name>("Name");
-	ProductInstance::instance().as<Products::package_size>("Package size");
-	ProductInstance::instance().as<Products::stock_count>("Stock count");
-	ProductInstance::instance().as<Products::unit_price>("Unit price");
-	ProductInstance::instance().as<Products::category_id>("Category id");
-
-	Products::set_default_row(100, "test", 0, 0, "0.00", 9);
-	for (int i = 0; i < 300; i++)
-	{
-		ProductInstance::instance().add(i, nl::to_string_date(nl::clock::now()), 100, 123, "now", 2345);
-	}
-}
-
 void MainFrame::CreateTables()
 {
 }
 
-void MainFrame::CreateMainView()
-{
-	CreateDefaultView();
-	mMainView = std::make_unique<MainView>(this, MAIN_VIEW);
-	auto& added = ProductInstance::instance().add(100, nl::to_string_date(nl::clock::now()), 0, 0, "0.00", 9);
-	ProductInstance::instance().notify(nl::notifications::add, added);
-	mFrameManager->AddPane(mMainView.get(), wxAuiPaneInfo().Name("MainView").Caption("View").CenterPane());
-	mFrameManager->Update();
-}
-
 void MainFrame::CreateDatabase()
 {
-	//create a database connection to the 
+	//create a database connection
+	auto DatabasePath = std::filesystem::current_path() / "asserts\\.data";
+	if (!std::filesystem::exists(DatabasePath)){
+		mLog->error("Database directory not found");
+		return;
+	}
+	DatabasePath /= "pharmaOfficeDatabase.db";
 	try {
-		DatabaseInstance::instance(database_file_path);
+		DatabaseInstance::instance(DatabasePath.string());
 	}
 	catch (std::exception& exp)
 	{
@@ -115,9 +108,32 @@ void MainFrame::CreateDatabase()
 	}
 }
 
+//This should be customisable
 void MainFrame::SetMainFrameArt()
 {
-	SetBackgroundColour(*wxWHITE);
+	wxAuiDockArt* art = mFrameManager->GetArtProvider();
+	art->SetMetric(wxAUI_DOCKART_CAPTION_SIZE, 24);
+	art->SetMetric(wxAUI_DOCKART_GRIPPER_SIZE, 5);
+	art->SetMetric(wxAUI_DOCKART_SASH_SIZE, 5);
+	art->SetColour(wxAUI_DOCKART_SASH_COLOUR, *wxWHITE);
+	art->SetColour(wxAUI_DOCKART_BACKGROUND_COLOUR, *wxWHITE);
+	art->SetColour(wxAUI_DOCKART_BORDER_COLOUR, *wxWHITE);
+	art->SetMetric(wxAUI_DOCKART_PANE_BORDER_SIZE, 0);
+	art->SetMetric(wxAUI_DOCKART_GRADIENT_TYPE, wxAUI_GRADIENT_HORIZONTAL);
+	mFrameManager->SetFlags(mFrameManager->GetFlags() | wxAUI_MGR_ALLOW_ACTIVE_PANE | wxAUI_MGR_VENETIAN_BLINDS_HINT);
+	wxInitAllImageHandlers();
+}
+
+void MainFrame::CreateDataView()
+{
+	mViewCtrl = std::make_unique<MainView>(this, MAIN_VIEW);
+	mFrameManager->AddPane(mViewCtrl.get(), wxAuiPaneInfo().Name("ViewCtrl").Caption("View").CenterPane());
+	mFrameManager->Update();
+}
+
+void MainFrame::Settings()
+{
+	wxTheColourDatabase->AddColour("Aqua", wxColour(240, 255, 255));
 }
 
 void MainFrame::OnClose(wxCloseEvent& event)
@@ -129,14 +145,19 @@ void MainFrame::OnClose(wxCloseEvent& event)
 	event.Skip();
 }
 
+void MainFrame::onEraseBackground(wxEraseEvent& evt)
+{
+	evt.Skip();
+}
+
 void MainFrame::OnAbout(wxCommandEvent& evt)
 {
 	wxAboutDialogInfo info;
 	info.SetName(wxT("Afrobug PharmaOffice"));
-	info.SetVersion(wxT("0.0.0 pre beta"));
+	info.SetVersion(wxT("0.0.1 pre beta"));
 	info.SetDescription(wxT("Pharmacy mamagement system aid in the managment of pharmaceutical products, sale, transactions, prescription, expiry and so much more"));
 	info.SetCopyright(wxT("(C) 2021 Afrobug Software"));
-
+	info.AddDeveloper("Ferife Zino :)");
 	wxAboutBox(info);
 }
 

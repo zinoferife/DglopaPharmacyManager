@@ -1,130 +1,174 @@
 #include "common.h"
 #include "MainView.h"
-
-BEGIN_EVENT_TABLE(MainView, wxSplitterWindow)
-	EVT_LIST_CACHE_HINT(MainView::DATA_VIEW, MainView::OnCacheHint)
-	EVT_LIST_ITEM_SELECTED(MainView::DATA_VIEW, MainView::OnItemSelected)
-	EVT_LIST_COL_CLICK(MainView::DATA_VIEW, MainView::OnColumnClicked)
-	EVT_LIST_COL_RIGHT_CLICK(MainView::DATA_VIEW, MainView::OnColumnRightClicked)
-	EVT_LIST_ITEM_RIGHT_CLICK(MainView::DATA_VIEW, MainView::OnRightClicked)
-	EVT_LIST_ITEM_ACTIVATED(MainView::DATA_VIEW, MainView::OnItemActivated)
-	EVT_TREE_ITEM_ACTIVATED(MainView::TREE_VIEW, MainView::OnTreeItemActivated)
-	EVT_TREE_SEL_CHANGED(MainView::TREE_VIEW, MainView::OnTreeSelectionChanged)
-	EVT_TREE_SEL_CHANGING(MainView::TREE_VIEW, MainView::OnTreeSelectionChanging)
-	EVT_TREE_ITEM_EXPANDED(MainView::TREE_VIEW, MainView::OnTreeExpanded)
-	EVT_TREE_ITEM_EXPANDING(MainView::TREE_VIEW, MainView::OnTreeExpanding)
-	EVT_TREE_ITEM_COLLAPSED(MainView::TREE_VIEW, MainView::OnTreeCollapsed)
-	EVT_TREE_ITEM_COLLAPSING(MainView::TREE_VIEW, MainView::OnTreeCollapsing)
-	EVT_TREE_SET_INFO(MainView::TREE_VIEW, MainView::OnTreeSetInfo)
-	EVT_TREE_GET_INFO(MainView::TREE_VIEW, MainView::OnTreeGetInfo)
+BEGIN_EVENT_TABLE(MainView, wxPanel)
+EVT_TREE_SEL_CHANGED(MainView::TREE, MainView::OnTreeItemSelectionChanged)
+EVT_TREE_SEL_CHANGED(MainView::TREE, MainView::OnTreeItemSelectionChanging)
 END_EVENT_TABLE()
 
-
 MainView::MainView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size)
-: wxSplitterWindow(parent, id, position, size, wxSP_NOBORDER | wxSP_PERMIT_UNSPLIT | wxSP_THIN_SASH | wxSP_ARROW_KEYS | wxBORDER_THEME){
-	CreateTree();
-	CreateDataView();
-	SetSashGravity(0.0);
-	SetMinimumPaneSize(200);
-	SplitVertically(mTree.get(), mDataView.get());
+: wxPanel(parent, id, position, size), mMainViewColour(wxColour(240, 255, 255)){
+	SetDefaultArt();
+	SetUpFonts();
+	CreatePageBook();
+	CreateTreeCtrl();
+
+	wxSizer* MainSizer = new wxBoxSizer(wxVERTICAL);
+	wxSizer* ViewSizer = new wxBoxSizer(wxHORIZONTAL);
+	ViewSizer->Add(mTreeCtrl.get(), wxSizerFlags().Proportion(0).Expand().Border(wxLEFT | wxTOP, 5))->SetMinSize(wxSize(200,-1));
+	ViewSizer->Add(mPageBook.get(), wxSizerFlags().Proportion(1).Expand());
+	MainSizer->Add(ViewSizer, wxSizerFlags().Proportion(1).Expand().Border(wxALL, 1));
+	SetSizer(MainSizer);
+	GetSizer()->SetSizeHints(this);
 }
 
-void MainView::CreateTree()
+MainView::~MainView()
 {
-	mTree = std::make_unique<wxTreeCtrl>(this, TREE_VIEW, wxDefaultPosition, wxDefaultSize, wxTR_FULL_ROW_HIGHLIGHT | wxTR_NO_LINES | wxTR_SINGLE | wxBORDER_THEME);
-	//make the tree
-	auto RootId = mTree->AddRoot("Root");
-	auto ProductId = mTree->AppendItem(RootId, "Products");
-	auto SalesId = mTree->AppendItem(RootId, "Sales");
-	auto InventoriesId = mTree->AppendItem(RootId, "Inventory");
-	auto Custormers = mTree->AppendItem(RootId, "Customers");
+	//allow the window hierarchy destory the objects
+	mPageBook.release();
+	mProductView.second.release();
+	mSalesView.second.release();
+	mPView.release();
 }
 
-void MainView::CreateDataView()
+void MainView::CreatePView()
 {
-	mDataView = std::make_unique<DataView>(this, DATA_VIEW);
-
+	mPView = std::make_unique<ProductView>(this, wxID_ANY);
+	mPageBook->AddPage(mPView.get(), "Product", true, 0);
 }
 
-void MainView::OnTreeItemActivated(wxTreeEvent& evt)
+void MainView::CreateSalesView()
 {
-	auto item = evt.GetItem();
-	if (item.IsOk())
+	SalesInstance::instance().as<Sales::id>("Sale number");
+	SalesInstance::instance().as<Sales::product_id>("product number");
+	SalesInstance::instance().as<Sales::customer_id>("customer number");
+	SalesInstance::instance().as<Sales::user_id>("user number");
+	SalesInstance::instance().as<Sales::amount>("amount");
+	SalesInstance::instance().as<Sales::date>("date");
+	SalesInstance::instance().as<Sales::price>("price");
+
+	mSalesView.second = std::make_unique<wxDataViewCtrl>(mPageBook.get(), SALES_VIEW, wxDefaultPosition, wxDefaultSize, wxDV_ROW_LINES | wxNO_BORDER);
+	wxDataViewModel* SalesModel = new SalesDataModel(SalesInstance::instance());
+	mSalesView.second->AssociateModel(SalesModel);
+	SalesModel->DecRef();
+	for (size_t i = 0; i < Sales::column_count; i++)
 	{
-		if (mTree->IsExpanded(item)){
-			mTree->Collapse(item);
-		}else{
-			mTree->Expand(item);
-		}
+		mSalesView.second->AppendTextColumn(SalesInstance::instance().get_name(i), i);
+	}
+	for (size_t i = 0; i < 3; i++)
+	{
+		SalesInstance::instance().add(i, i, i * 2, (i * 10 % 5), 100, nl::clock::now(), "0.08");
+		SalesInstance::instance().notify(nl::notifications::add, i);
 	}
 }
 
-void MainView::OnTreeGetInfo(wxTreeEvent& evt)
+void MainView::CreatePageBook()
+{
+	mPageBook = std::make_unique<wxAuiNotebook>(this, PAGE_BOOK, wxDefaultPosition, wxDefaultSize, wxAUI_NB_DEFAULT_STYLE | wxNO_BORDER);
+	CreatePageBookImageList();
+	CreateSalesView();
+	CreatePView();
+	mPageBook->SetThemeEnabled(false);
+	mPageBook->SetForegroundColour(*wxWHITE);
+	mPageBook->AddPage(mSalesView.second.get(), "Sales", false, 1);
+}
+
+void MainView::CreateTreeCtrl()
+{
+	mTreeCtrl = std::make_unique<wxTreeCtrl>(this, TREE, wxDefaultPosition, wxDefaultSize, wxTR_FULL_ROW_HIGHLIGHT | wxTR_HIDE_ROOT | wxTR_SINGLE | wxTR_NO_LINES | wxTR_ROW_LINES | wxNO_BORDER);
+	CreateTreeCtrlImageList();
+	mTreeCtrl->SetIndent(5);
+	mTreeCtrl->SetBackgroundColour(mMainViewColour);
+
+
+
+	//create the tree elements
+	mRootID = mTreeCtrl->AddRoot("Root");
+	
+	
+	auto generalID = AddToTree(mRootID, "General", 1, 2);
+	auto activityId = AddToTree(generalID, "Activities", 3, 4);
+
+
+	auto transactionsID= AddToTree(mRootID, "Transactions", 1, 2);
+	mSalesView.first =  AddToTree(transactionsID, "Sales", 3, 4);
+	auto invoiceId =    AddToTree(transactionsID, "Invoice", 3, 4);
+	auto orderId =      AddToTree(transactionsID, "Order", 3, 4);
+
+	auto pharmacyID = AddToTree(mRootID, "Pharamacy", 1, 2);
+	auto patientsId = AddToTree(pharmacyID, "Patients", 3, 4);
+	auto prescriptionsId = AddToTree(pharmacyID, "Prescriptions", 3, 4);
+
+	auto inventoryID = AddToTree(mRootID, "Inventories", 1, 2);
+	mProductView.first = AddToTree(inventoryID, "Products", 3, 4);
+	
+	auto miscID = AddToTree(mRootID, "Micellenous", 1, 2);
+
+
+
+	mTreeCtrl->ExpandAll();
+}
+
+void MainView::CreateImageLists()
 {
 }
 
-void MainView::OnTreeSetInfo(wxTreeEvent& evt)
+void MainView::CreatePageBookImageList()
 {
+	wxImageList* imgList = new wxImageList(16, 16);
+	imgList->Add(wxArtProvider::GetBitmap("user"));
+	imgList->Add(wxArtProvider::GetBitmap("download"));
+	mPageBook->AssignImageList(imgList);
 }
 
-void MainView::OnTreeCollapsed(wxTreeEvent& evt)
+void MainView::CreateTreeCtrlImageList()
 {
+	wxImageList* imgList = new wxImageList(16, 16);
+	imgList->Add(wxArtProvider::GetBitmap("user"));
+	imgList->Add(wxArtProvider::GetBitmap("folder"));
+	imgList->Add(wxArtProvider::GetBitmap("folder_open"));
+	imgList->Add(wxArtProvider::GetBitmap("action_add"));
+	imgList->Add(wxArtProvider::GetBitmap("action_remove"));
+	mTreeCtrl->AssignImageList(imgList);
 }
 
-void MainView::OnTreeCollapsing(wxTreeEvent& evt)
+void MainView::SetDefaultArt()
 {
+	SetBackgroundColour(mMainViewColour);
+	ClearBackground();
 }
 
-void MainView::OnTreeExpanded(wxTreeEvent& evt)
+void MainView::SetUpFonts()
 {
+	//font used for all the views 
+	mMainViewFonts[TREE_MAIN].SetPointSize(9);
+	mMainViewFonts[TREE_MAIN].SetFamily(wxFONTFAMILY_SWISS);
+	mMainViewFonts[TREE_MAIN].SetFaceName("Bookman");
+	mMainViewFonts[TREE_MAIN].SetWeight(wxFONTWEIGHT_BOLD);
+
+	mMainViewFonts[TREE_CHILD].SetPointSize(9);
+	mMainViewFonts[TREE_CHILD].SetFamily(wxFONTFAMILY_SWISS);
 }
 
-void MainView::OnTreeExpanding(wxTreeEvent& evt)
+wxTreeItemId MainView::AddToTree(wxTreeItemId parent, const std::string& name, int imageId, int imageIdSel)
 {
+	if(parent == mRootID)
+	{
+		auto id = mTreeCtrl->AppendItem(parent, name, imageId, imageIdSel);
+		mTreeCtrl->SetItemFont(id, mMainViewFonts[TREE_MAIN]);
+		mTreeIdSet.insert(id);
+		return id;
+	}
+	auto id = mTreeCtrl->AppendItem(parent, name, imageId, imageIdSel);
+	mTreeCtrl->SetItemFont(id, mMainViewFonts[TREE_CHILD]);
+	return id;
 }
 
-void MainView::OnTreeSelectionChanged(wxTreeEvent& evt)
+void MainView::OnTreeItemSelectionChanging(wxTreeEvent& evt)
 {
+	spdlog::get("log")->info("In selection changing");
 }
 
-void MainView::OnTreeSelectionChanging(wxTreeEvent& evt)
+void MainView::OnTreeItemSelectionChanged(wxTreeEvent& evt)
 {
-}
 
-void MainView::OnTreeStateImageClick(wxTreeEvent& evt)
-{
-}
-
-void MainView::OnTreeItemMenu(wxTreeEvent& evt)
-{
-}
-
-void MainView::OnCacheHint(wxListEvent& evt)
-{
-	mDataView->OnCacheHint(evt);
-}
-
-void MainView::OnItemSelected(wxListEvent& evt)
-{
-	mDataView->OnItemSelected(evt);
-}
-
-void MainView::OnColumnClicked(wxListEvent& evt)
-{
-	mDataView->OnColumnClicked(evt);
-}
-
-void MainView::OnColumnRightClicked(wxListEvent& evt)
-{
-	mDataView->OnColumnRightClicked(evt);
-}
-
-void MainView::OnRightClicked(wxListEvent& evt)
-{
-	mDataView->OnRightClicked(evt);
-}
-
-void MainView::OnItemActivated(wxListEvent& evt)
-{
-	mDataView->OnItemActivated(evt);
 }

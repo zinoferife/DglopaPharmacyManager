@@ -1,56 +1,94 @@
 #pragma once
 #include <wx/wx.h>
-#include <wx/splitter.h>
+#include <wx/panel.h>
+#include <wx/treebook.h>
+#include <wx/dataview.h>
+#include <wx/aui/auibook.h>
+#include <wx/aui/tabart.h>
 #include <wx/treectrl.h>
-#include "DataView.h"
-#include "Instances.h"
-#include <spdlog/spdlog.h>
-#include <memory>
+#include <wx/artprov.h>
 
-class MainView : public wxSplitterWindow
+#include <memory>
+#include <spdlog/spdlog.h>
+#include <unordered_set>
+#include <unordered_map>
+
+
+#include "DataModel.h"
+#include "ProductView.h"
+
+namespace std
+{
+	template<>
+	struct hash<wxTreeItemId>
+	{
+		size_t operator()(const wxTreeItemId& value) const noexcept
+		{
+			return std::hash<std::uint32_t>{}(wxPtrToUInt(value.GetID()));
+		}
+	};
+}
+class MainView : public wxPanel
 {
 public:
+	MainView(wxWindow* parent, wxWindowID id,
+		const wxPoint& position = wxDefaultPosition, const wxSize& size = wxDefaultSize);
+	virtual ~MainView();
+	//ids
 	enum
 	{
-		DATA_VIEW,
-		TREE_VIEW
+		TREE = wxID_HIGHEST + 500,
+		PAGE_BOOK,
+		PRODUCT_VIEW,
+		SALES_VIEW
 	};
 
-	MainView(wxWindow* parent, wxWindowID id, const wxPoint& position = wxDefaultPosition, const wxSize& size = wxDefaultSize);
-	virtual ~MainView() {}
+	//font id
+	enum	
+	{
+		TREE_MAIN,
+		TREE_CHILD
+	};
 
+//creation functions
 public:
-	//creation functions
-	void CreateTree();
-	void CreateDataView();
+	void CreatePView();
+	void CreateSalesView();
+	void CreatePageBook();
+	void CreateTreeCtrl();
+	void CreateImageLists();
+	void CreatePageBookImageList();
+	void CreateTreeCtrlImageList();
+	void SetDefaultArt();
+	void SetUpFonts();
+	wxTreeItemId AddToTree(wxTreeItemId parent, const std::string& name, int imageId = -1,
+		int imageIdSel = -1);
 
-
-// tree event table
-public:
-	void OnTreeItemActivated(wxTreeEvent& evt);
-	void OnTreeGetInfo(wxTreeEvent& evt);
-	void OnTreeSetInfo(wxTreeEvent& evt);
-	void OnTreeCollapsed(wxTreeEvent& evt);
-	void OnTreeCollapsing(wxTreeEvent& evt);
-	void OnTreeExpanded(wxTreeEvent& evt);
-	void OnTreeExpanding(wxTreeEvent& evt);
-	void OnTreeSelectionChanged(wxTreeEvent& evt);
-	void OnTreeSelectionChanging(wxTreeEvent& evt);
-	void OnTreeStateImageClick(wxTreeEvent& evt);
-	void OnTreeItemMenu(wxTreeEvent& evt);
-
-//data view event table
-public:
-	void OnCacheHint(wxListEvent& evt);
-	void OnItemSelected(wxListEvent& evt);
-	void OnColumnClicked(wxListEvent& evt);
-	void OnColumnRightClicked(wxListEvent& evt);
-	void OnRightClicked(wxListEvent& evt);
-	void OnItemActivated(wxListEvent& evt);
+//tree ctrl events
+private:
+	void OnTreeItemSelectionChanging(wxTreeEvent& evt);
+	void OnTreeItemSelectionChanged(wxTreeEvent& evt);
 
 private:
-	std::unique_ptr<wxTreeCtrl> mTree;
-	std::unique_ptr<DataView> mDataView;
+	//page id, to dataView control
+	std::pair<wxTreeItemId, std::unique_ptr<wxDataViewCtrl>> mProductView{};
+	std::pair<wxTreeItemId, std::unique_ptr<wxDataViewCtrl>> mSalesView{};
+	
+	//set of parent treeID, used to filter out activations
+	std::unordered_set<wxTreeItemId> mTreeIdSet{};
+	
+	//map of treeId to page index
+	std::unordered_map<wxTreeItemId, std::size_t> mDataViews{};
+	std::unique_ptr<wxAuiNotebook> mPageBook{};
+	std::unique_ptr<wxTreeCtrl> mTreeCtrl{};
+	std::unique_ptr<ProductView> mPView{};
+	std::array<wxFont,5> mMainViewFonts;
+
+private:
+	wxTreeItemId mRootID;
+	wxColour mTreeTextColour;
+	wxColour mMainViewColour;
 	DECLARE_EVENT_TABLE()
+
 };
 

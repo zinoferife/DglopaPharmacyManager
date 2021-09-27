@@ -58,6 +58,7 @@ class ProductDetails : public nl::vector_table < std::uint64_t, //prouct id
 	std::string, // product class
 	std::vector<std::string>> // health conditions 
 {
+public:
 	BEGIN_COL_NAME("ProductDetails")
 		COL_NAME("product_id")
 		COL_NAME("product_active_ingredent")
@@ -80,6 +81,7 @@ class ProductDetails : public nl::vector_table < std::uint64_t, //prouct id
 
 /*--------------------------------------------------------------- custormers -------------------------------------------------------------------------*/
 class Customers : public nl::vector_table<std::uint64_t,
+	nl::uuid,
 	std::string, //name
 	std::string, //address
 	std::string, //email address
@@ -88,6 +90,7 @@ class Customers : public nl::vector_table<std::uint64_t,
 public:
 	BEGIN_COL_NAME("Customers")
 	COL_NAME("id")
+	COL_NAME("uuid")
 	COL_NAME("name")
 	COL_NAME("address")
 	COL_NAME("email_address")
@@ -97,6 +100,7 @@ public:
 	enum
 	{
 		id = 0,
+		uuid,
 		name,
 		address,
 		email_address,
@@ -178,6 +182,8 @@ class Users : public nl::vector_table<std::uint64_t, //user_id
 	std::string, //surname
 	std::string, // name
 	std::string, // phone number
+	std::uint32_t, //User level
+	nl::uuid, //user_uuid
 	std::uint64_t> // password hash
 {
 public:
@@ -186,6 +192,8 @@ public:
 		COL_NAME("surname")
 		COL_NAME("name")
 		COL_NAME("phone_number")
+		COL_NAME("user_level")
+		COL_NAME("uuid")
 		COL_NAME("password_hash")
 	END_COL_NAME()
 	IMPLEMENT_GET_COL_NAME()
@@ -195,6 +203,137 @@ public:
 		surname,
 		name,
 		phone_number,
+		user_level,
+		uuid,
 		password_hash
+	};
+};
+/*---------------------------------------------------------------Invoice-------------------------------------------------------------------------*/
+class Invoice : public nl::vector_table < std::uint64_t, //invoice id
+	std::uint64_t, //invoice number
+	nl::date_time_t, //invoice date 
+	std::string, //supplier name
+	std::string, //suppiler address
+	std::string, //recipient name
+	std::string> //recipient address
+{
+public:
+	BEGIN_COL_NAME("invoice")
+	COL_NAME("id")
+	COL_NAME("invoice_number")
+	COL_NAME("invoice_date")
+	COL_NAME("supplier_name")
+	COL_NAME("supplier_address")
+	COL_NAME("recipient_name")
+	COL_NAME("recipient_address")
+	END_COL_NAME()
+	IMPLEMENT_GET_COL_NAME()
+	enum
+	{
+		id = 0,
+		invoice_number,
+		invoice_date,
+		supplier_name,
+		supplier_address,
+		recipient_name,
+		recipient_address
+	};
+};
+
+/*---------------------------------------------------------------track list-------------------------------------------------------------------------*/
+class TrackList : public nl::vector_table<std::uint64_t> //productId
+{
+public:
+	BEGIN_COL_NAME("track_list")
+	COL_NAME("tracked_product")
+	END_COL_NAME()
+	IMPLEMENT_GET_COL_NAME()
+	enum
+	{
+		tracked_product = 0
+	};
+
+};
+/*---------------------------------------------------------------Prescriptions-------------------------------------------------------------------------*/
+class Prescriptions : public nl::vector_table<std::uint64_t, //prescription id
+	nl::uuid, //universal identifier
+	nl::date_time_t, //date issued
+	std::string, //medication
+	std::string, //dosage form
+	std::string, //strength
+	std::uint32_t, //repeat count status (if 0, its dispenced all the repeats, else reduce by one everytime it is dispenced)
+	std::string, //instructions to take
+	std::uint32_t, //supply (count of dosage forms e.g 28 tablets)
+	std::string, //patient name
+	std::string, //patient address
+	std::string, //prescriber name e.g (Dr vivienne ferife)
+	std::string, //prescribers health center
+	std::string> // prescriber licence number
+{
+public:
+	BEGIN_COL_NAME("prescriptions")
+		COL_NAME("id")
+		COL_NAME("uuid")
+		COL_NAME("medication")
+		COL_NAME("dosage_form")
+		COL_NAME("strength")
+		COL_NAME("repeat_count_status")
+		COL_NAME("instructions_to_take")
+		COL_NAME("supply")
+		COL_NAME("patient_name")
+		COL_NAME("patient_address")
+		COL_NAME("prescriber_name")
+		COL_NAME("prescriber_health_center")
+		COL_NAME("presriber_licence_number")
+	END_COL_NAME()
+	IMPLEMENT_GET_COL_NAME()
+	enum
+	{
+		id = 0,
+		uuid,
+		medication,
+		dosage_form,
+		strength,
+		repeat_count_status,
+		instructions_to_take,
+		supply,
+		patient_name,
+		patient_address,
+		prescriber_name,
+		prescriber_health_center,
+		prescriber_licence_number
+	};
+};
+
+/*---------------------------------------------------------------Pharmacy credentials-------------------------------------------------------------------------*/
+class PharmacyCredentials : nl::vector_table < std::uint64_t,
+	nl::uuid, //universal user id, issued by Afrobug on download
+	nl::date_time_t,
+	std::string, //pharmacy name
+	std::string, //address line
+	std::string, //address city,
+	std::string, //state 
+	std::string> //country
+{
+public:
+	BEGIN_COL_NAME("pharmacy_credentials")
+		COL_NAME("id")
+		COL_NAME("date_created")
+		COL_NAME("name")
+		COL_NAME("address_line")
+		COL_NAME("address_city")
+		COL_NAME("address_state")
+		COL_NAME("address_country")
+	END_COL_NAME()
+	IMPLEMENT_GET_COL_NAME()
+	enum 
+	{
+		id = 0,
+		date_created,
+		name,
+		address_line,
+		address_city,
+		address_state,
+		address_country
 	};
 };
