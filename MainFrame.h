@@ -49,7 +49,8 @@ public:
 	{
 		ID_BACK_UP_DATA = wxID_HIGHEST + 200,
 		ID_NEW_PRODUCT,
-		ID_PRODUCT_SEARCH
+		ID_PRODUCT_SEARCH,
+		ID_LOG
 	};
 
 	enum
@@ -83,6 +84,7 @@ private:
 //main frame event handlers
 private:
 	void OnAbout(wxCommandEvent& evt);
+	void OnLog(wxCommandEvent& evt);
 	void OnClose(wxCloseEvent& evt);
 	void onEraseBackground(wxEraseEvent& evt);
 

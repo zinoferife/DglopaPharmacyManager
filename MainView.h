@@ -14,7 +14,8 @@
 #include <unordered_map>
 
 
-#include "DataModel.h"
+#include "TableMonoState.h"
+#include "DataModelBase.h"
 #include "ProductView.h"
 
 namespace std
@@ -38,7 +39,7 @@ public:
 	enum
 	{
 		TREE = wxID_HIGHEST + 500,
-		PAGE_BOOK,
+		VIEW_BOOK,
 		PRODUCT_VIEW,
 		SALES_VIEW
 	};
@@ -50,41 +51,67 @@ public:
 		TREE_CHILD
 	};
 
+	//image index
+	enum
+	{
+		user,
+		download,
+		folder,
+		folder_open,
+		action_add,
+		action_remove,
+		file
+	};
+
 //creation functions
 public:
-	void CreatePView();
+	void CreateProductView();
 	void CreateSalesView();
 	void CreatePageBook();
 	void CreateTreeCtrl();
 	void CreateImageLists();
-	void CreatePageBookImageList();
-	void CreateTreeCtrlImageList();
 	void SetDefaultArt();
 	void SetUpFonts();
 	wxTreeItemId AddToTree(wxTreeItemId parent, const std::string& name, int imageId = -1,
 		int imageIdSel = -1);
+	bool AddToViewMap(wxWindow* win, wxTreeItemId item);
 
 //tree ctrl events
 private:
 	void OnTreeItemSelectionChanging(wxTreeEvent& evt);
 	void OnTreeItemSelectionChanged(wxTreeEvent& evt);
+	void OnTreeItemActivated(wxTreeEvent& evt);
+	void OnTreeItemExpanding(wxTreeEvent& evt);
+	void OnTreeItemExpanded(wxTreeEvent& evt);
+	void OnTreeItemRightClick(wxTreeEvent& evt);
+	void OnTreeItemMenu(wxTreeEvent& evt);
+	void OnTreeItemGetToolTip(wxTreeEvent& evt);
+	void OnTreeItemGetInfo(wxTreeEvent& evt);
+	void OnTreeItemSetInfo(wxTreeEvent& evt);
+
+//AuiNotebook events
+private:
+	void OnBookClosed(wxAuiNotebookEvent& evt);
+	void OnBookClose(wxAuiNotebookEvent& evt);
+	void OnBookTabRClick(wxAuiNotebookEvent& evt);
+	void OnBookPageChanged(wxAuiNotebookEvent& evt);
+	void OnBookPageChanging(wxAuiNotebookEvent& evt);
+
 
 private:
 	//page id, to dataView control
-	std::pair<wxTreeItemId, std::unique_ptr<wxDataViewCtrl>> mProductView{};
-	std::pair<wxTreeItemId, std::unique_ptr<wxDataViewCtrl>> mSalesView{};
 	
-	//set of parent treeID, used to filter out activations
-	std::unordered_set<wxTreeItemId> mTreeIdSet{};
-	
-	//map of treeId to page index
-	std::unordered_map<wxTreeItemId, std::size_t> mDataViews{};
-	std::unique_ptr<wxAuiNotebook> mPageBook{};
+	std::unique_ptr<wxAuiNotebook> mViewBook{};
 	std::unique_ptr<wxTreeCtrl> mTreeCtrl{};
 	std::unique_ptr<ProductView> mPView{};
-	std::array<wxFont,5> mMainViewFonts;
+	std::unique_ptr<wxDataViewCtrl> mSView{};
+
+	//for remvoing to addiing 
+	std::unordered_map<wxTreeItemId, wxWindow*> mDataViewsMap{};
 
 private:
+	std::array<wxFont,5> mMainViewFonts;
+	std::unique_ptr<wxImageList> mImageList;
 	wxTreeItemId mRootID;
 	wxColour mTreeTextColour;
 	wxColour mMainViewColour;

@@ -25,6 +25,8 @@ namespace std
 template<typename Data>
 class DataModel : public wxDataViewModel
 {
+	typedef typename Data::template elem_t<Data::id> id_t;
+	typedef std::unordered_map<id_t, std::shared_ptr<wxDataViewItemAttr>> itemToAttr_t;
 public:
 	DataModel(Data& instance)
 	: mData(instance), mPastLastAdded(-1){
@@ -44,6 +46,33 @@ public:
 	{
 		return true;
 	}
+
+	virtual int Compare(const wxDataViewItem& item1, const wxDataViewItem& item2, unsigned int column, bool ascending) const
+	{
+		if (column > GetColumnCount()) return 0;
+		auto indexIter = mIndexMap.find(item1);
+		auto indexIter2 = mIndexMap.find(item2);
+		if (indexIter != mIndexMap.end() && indexIter != mIndexMap.end())
+		{
+			typename Data::variant_t variant1;
+			typename Data::variant_t variant2;
+			mData.get_in_variant(indexIter->second, column, variant1);
+			mData.get_in_variant(indexIter2->second, column, variant2);
+			if (ascending)
+			{
+				if (variant1 < variant2) return -1;
+				else if (variant1 == variant2) return 0;
+				else return 1;
+			}else{
+				if (variant1 < variant2) return 1;
+				else if (variant1 == variant2) return 0;
+				else return -1;
+			}
+		}
+		//if items are not represented in model return 0
+		return 0;
+	}
+
 	virtual bool HasValue(const wxDataViewItem& item, unsigned col) const
 	{
 		return (mIndexMap.find(item) != mIndexMap.end());
@@ -104,6 +133,20 @@ public:
 
 	virtual bool GetAttr(const wxDataViewItem& item, unsigned int col, wxDataViewItemAttr& attr) const
 	{
+		if (col < GetColumnCount())
+		{
+			auto iter = mIndexMap.find(item);
+			if (iter != mIndexMap.end())
+			{
+				const id_t& id = mData.get<Data::id>(iter->second);
+				auto attrIter = mAttributeTable.find(id);
+				if (attrIter != mAttributeTable.end()){
+					attr = *(attrIter->second);
+					return true;
+				}
+			}
+		}
+
 		return false;
 	}
 	virtual unsigned int GetColumnCount() const
@@ -113,6 +156,18 @@ public:
 	virtual bool SetValue(const wxVariant& variant, const wxDataViewItem& item, unsigned int col)
 	{
 		return false;
+	}
+
+	int GetDataViewItemIndex(const wxDataViewItem& item)
+	{
+		auto iter = mIndexMap.find(item);
+		if (iter != mIndexMap.end()) return iter->second;
+		return -1;
+	}
+
+	void ResetAttributes()
+	{
+		mAttributeTable.clear();
 	}
 
 public:
@@ -184,8 +239,49 @@ public:
 			break;
 		}
 	}
+
+//attributes
+public:
+	void AddAttribute(std::shared_ptr<wxDataViewItemAttr> attr, const std::vector<id_t>&& ids)
+	{
+		for (auto iter = ids.begin(); iter != ids.end(); iter++)
+		{
+			auto [attrIter, inserted] = mAttributeTable.insert(std::make_pair(*iter, attr));
+			if (!inserted){
+				//if already in table, means a change in attr
+				attrIter->second = attr;
+			}
+		}
+	}
+
+	void AddAttribute(std::shared_ptr<wxDataViewItemAttr> attr, id_t id)
+	{
+		auto [iter, inserted] = mAttributeTable.insert(std::make_pair(id, attr));
+		if (!inserted){
+			iter->second = attr;
+		}
+	}
+
+	void RemoveAttribute(const std::vector<id_t>&& ids)
+	{
+		for (auto iter = ids.begin(); iter != ids.end(); iter++)
+		{
+			mAttributeTable.erase(*iter);
+		}
+	}
+
+	void RemoveAttribute(id_t id)
+	{
+		mAttributeTable.erase(id);
+	}
+
+
 protected:
 	std::unordered_map<wxDataViewItem, size_t> mIndexMap{};
+	
+	
+	//each row can have an attribute type, 
+	itemToAttr_t mAttributeTable{};
 	Data& mData;
 
 	//one past the last added

@@ -1,21 +1,37 @@
 #include "common.h"
 #include "MainView.h"
 BEGIN_EVENT_TABLE(MainView, wxPanel)
+EVT_TREE_ITEM_ACTIVATED(MainView::TREE, MainView::OnTreeItemActivated)
 EVT_TREE_SEL_CHANGED(MainView::TREE, MainView::OnTreeItemSelectionChanged)
-EVT_TREE_SEL_CHANGED(MainView::TREE, MainView::OnTreeItemSelectionChanging)
+EVT_TREE_SEL_CHANGING(MainView::TREE, MainView::OnTreeItemSelectionChanging)
+EVT_TREE_GET_INFO(MainView::TREE, MainView::OnTreeItemGetInfo)
+EVT_TREE_SET_INFO(MainView::TREE, MainView::OnTreeItemSetInfo)
+EVT_TREE_ITEM_EXPANDED(MainView::TREE, MainView::OnTreeItemExpanded)
+EVT_TREE_ITEM_EXPANDING(MainView::TREE, MainView::OnTreeItemExpanding)
+EVT_TREE_ITEM_RIGHT_CLICK(MainView::TREE, MainView::OnTreeItemRightClick)
+EVT_TREE_ITEM_MENU(MainView::TREE, MainView::OnTreeItemMenu)
+EVT_TREE_ITEM_GETTOOLTIP(MainView::TREE, MainView::OnTreeItemGetToolTip)
+
+EVT_AUINOTEBOOK_PAGE_CLOSE(MainView::VIEW_BOOK, MainView::OnBookClose)
+EVT_AUINOTEBOOK_PAGE_CLOSED(MainView::VIEW_BOOK, MainView::OnBookClosed)
+EVT_AUINOTEBOOK_PAGE_CHANGED(MainView::VIEW_BOOK, MainView::OnBookPageChanged)
+EVT_AUINOTEBOOK_PAGE_CHANGING(MainView::VIEW_BOOK, MainView::OnBookPageChanging)
+EVT_AUINOTEBOOK_TAB_RIGHT_UP(MainView::VIEW_BOOK, MainView::OnBookTabRClick)
 END_EVENT_TABLE()
 
 MainView::MainView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size)
 : wxPanel(parent, id, position, size), mMainViewColour(wxColour(240, 255, 255)){
 	SetDefaultArt();
 	SetUpFonts();
+	TableMonoState::CreateAllTables();
+	CreateImageLists();
 	CreatePageBook();
 	CreateTreeCtrl();
 
 	wxSizer* MainSizer = new wxBoxSizer(wxVERTICAL);
 	wxSizer* ViewSizer = new wxBoxSizer(wxHORIZONTAL);
 	ViewSizer->Add(mTreeCtrl.get(), wxSizerFlags().Proportion(0).Expand().Border(wxLEFT | wxTOP, 5))->SetMinSize(wxSize(200,-1));
-	ViewSizer->Add(mPageBook.get(), wxSizerFlags().Proportion(1).Expand());
+	ViewSizer->Add(mViewBook.get(), wxSizerFlags().Proportion(1).Expand());
 	MainSizer->Add(ViewSizer, wxSizerFlags().Proportion(1).Expand().Border(wxALL, 1));
 	SetSizer(MainSizer);
 	GetSizer()->SetSizeHints(this);
@@ -24,58 +40,50 @@ MainView::MainView(wxWindow* parent, wxWindowID id, const wxPoint& position, con
 MainView::~MainView()
 {
 	//allow the window hierarchy destory the objects
-	mPageBook.release();
-	mProductView.second.release();
-	mSalesView.second.release();
+	mViewBook.release();
+	mTreeCtrl.release();
+	mSView.release();
 	mPView.release();
 }
 
-void MainView::CreatePView()
+void MainView::CreateProductView()
 {
 	mPView = std::make_unique<ProductView>(this, wxID_ANY);
-	mPageBook->AddPage(mPView.get(), "Product", true, 0);
+	mPView->Hide();
 }
 
 void MainView::CreateSalesView()
 {
-	SalesInstance::instance().as<Sales::id>("Sale number");
-	SalesInstance::instance().as<Sales::product_id>("product number");
-	SalesInstance::instance().as<Sales::customer_id>("customer number");
-	SalesInstance::instance().as<Sales::user_id>("user number");
-	SalesInstance::instance().as<Sales::amount>("amount");
-	SalesInstance::instance().as<Sales::date>("date");
-	SalesInstance::instance().as<Sales::price>("price");
-
-	mSalesView.second = std::make_unique<wxDataViewCtrl>(mPageBook.get(), SALES_VIEW, wxDefaultPosition, wxDefaultSize, wxDV_ROW_LINES | wxNO_BORDER);
-	wxDataViewModel* SalesModel = new SalesDataModel(SalesInstance::instance());
-	mSalesView.second->AssociateModel(SalesModel);
+	mSView = std::make_unique<wxDataViewCtrl>(mViewBook.get(), SALES_VIEW, wxDefaultPosition, wxDefaultSize, wxDV_ROW_LINES | wxNO_BORDER);
+	wxDataViewModel* SalesModel = new DataModel<Sales>(SalesInstance::instance());
+	mSView->AssociateModel(SalesModel);
 	SalesModel->DecRef();
 	for (size_t i = 0; i < Sales::column_count; i++)
 	{
-		mSalesView.second->AppendTextColumn(SalesInstance::instance().get_name(i), i);
+		mSView->AppendTextColumn(SalesInstance::instance().get_name(i), i);
 	}
-	for (size_t i = 0; i < 3; i++)
+	for (size_t i = 0; i < 30; i++)
 	{
 		SalesInstance::instance().add(i, i, i * 2, (i * 10 % 5), 100, nl::clock::now(), "0.08");
 		SalesInstance::instance().notify(nl::notifications::add, i);
 	}
+	mSView->Hide();
 }
 
 void MainView::CreatePageBook()
 {
-	mPageBook = std::make_unique<wxAuiNotebook>(this, PAGE_BOOK, wxDefaultPosition, wxDefaultSize, wxAUI_NB_DEFAULT_STYLE | wxNO_BORDER);
-	CreatePageBookImageList();
+	mViewBook = std::make_unique<wxAuiNotebook>(this, VIEW_BOOK, wxDefaultPosition, wxDefaultSize, wxAUI_NB_DEFAULT_STYLE | wxNO_BORDER);
+	mViewBook->SetImageList(mImageList.get());
 	CreateSalesView();
-	CreatePView();
-	mPageBook->SetThemeEnabled(false);
-	mPageBook->SetForegroundColour(*wxWHITE);
-	mPageBook->AddPage(mSalesView.second.get(), "Sales", false, 1);
+	CreateProductView();
+	mViewBook->SetForegroundColour(*wxWHITE);
+	mViewBook->ClearBackground();
 }
 
 void MainView::CreateTreeCtrl()
 {
 	mTreeCtrl = std::make_unique<wxTreeCtrl>(this, TREE, wxDefaultPosition, wxDefaultSize, wxTR_FULL_ROW_HIGHLIGHT | wxTR_HIDE_ROOT | wxTR_SINGLE | wxTR_NO_LINES | wxTR_ROW_LINES | wxNO_BORDER);
-	CreateTreeCtrlImageList();
+	mTreeCtrl->SetImageList(mImageList.get());
 	mTreeCtrl->SetIndent(5);
 	mTreeCtrl->SetBackgroundColour(mMainViewColour);
 
@@ -85,51 +93,41 @@ void MainView::CreateTreeCtrl()
 	mRootID = mTreeCtrl->AddRoot("Root");
 	
 	
-	auto generalID = AddToTree(mRootID, "General", 1, 2);
-	auto activityId = AddToTree(generalID, "Activities", 3, 4);
+	auto generalID = AddToTree(mRootID, "General", folder, folder_open);
+	auto activityId = AddToTree(generalID, "Activities", file);
 
 
-	auto transactionsID= AddToTree(mRootID, "Transactions", 1, 2);
-	mSalesView.first =  AddToTree(transactionsID, "Sales", 3, 4);
-	auto invoiceId =    AddToTree(transactionsID, "Invoice", 3, 4);
-	auto orderId =      AddToTree(transactionsID, "Order", 3, 4);
+	auto transactionsID= AddToTree(mRootID, "Transactions", folder, folder_open);
+	AddToViewMap(mSView.get(), AddToTree(transactionsID, "Sales", file));
+	auto invoiceId =    AddToTree(transactionsID, "Invoice", file);
+	auto orderId =      AddToTree(transactionsID, "Order", file);
 
-	auto pharmacyID = AddToTree(mRootID, "Pharamacy", 1, 2);
-	auto patientsId = AddToTree(pharmacyID, "Patients", 3, 4);
-	auto prescriptionsId = AddToTree(pharmacyID, "Prescriptions", 3, 4);
+	auto pharmacyID = AddToTree(mRootID, "Pharamacy", folder, folder_open);
+	auto patientsId = AddToTree(pharmacyID, "Patients", file);
+	auto prescriptionsId = AddToTree(pharmacyID, "Prescriptions", file);
 
-	auto inventoryID = AddToTree(mRootID, "Inventories", 1, 2);
-	mProductView.first = AddToTree(inventoryID, "Products", 3, 4);
+	auto inventoryID = AddToTree(mRootID, "Inventories", folder, folder_open);
+	AddToViewMap(mPView.get(), AddToTree(inventoryID, "Products", file));
 	
-	auto miscID = AddToTree(mRootID, "Micellenous", 1, 2);
+	auto miscID = AddToTree(mRootID, "Micellenous", folder, folder_open );
 
 
-
+	
 	mTreeCtrl->ExpandAll();
 }
 
 void MainView::CreateImageLists()
 {
+	mImageList = std::make_unique<wxImageList>(16, 16);
+	mImageList->Add(wxArtProvider::GetBitmap("user"));
+	mImageList->Add(wxArtProvider::GetBitmap("download"));
+	mImageList->Add(wxArtProvider::GetBitmap("folder"));
+	mImageList->Add(wxArtProvider::GetBitmap("folder_open"));
+	mImageList->Add(wxArtProvider::GetBitmap("action_add"));
+	mImageList->Add(wxArtProvider::GetBitmap("action_remove"));
+	mImageList->Add(wxArtProvider::GetBitmap("file"));
 }
 
-void MainView::CreatePageBookImageList()
-{
-	wxImageList* imgList = new wxImageList(16, 16);
-	imgList->Add(wxArtProvider::GetBitmap("user"));
-	imgList->Add(wxArtProvider::GetBitmap("download"));
-	mPageBook->AssignImageList(imgList);
-}
-
-void MainView::CreateTreeCtrlImageList()
-{
-	wxImageList* imgList = new wxImageList(16, 16);
-	imgList->Add(wxArtProvider::GetBitmap("user"));
-	imgList->Add(wxArtProvider::GetBitmap("folder"));
-	imgList->Add(wxArtProvider::GetBitmap("folder_open"));
-	imgList->Add(wxArtProvider::GetBitmap("action_add"));
-	imgList->Add(wxArtProvider::GetBitmap("action_remove"));
-	mTreeCtrl->AssignImageList(imgList);
-}
 
 void MainView::SetDefaultArt()
 {
@@ -155,7 +153,6 @@ wxTreeItemId MainView::AddToTree(wxTreeItemId parent, const std::string& name, i
 	{
 		auto id = mTreeCtrl->AppendItem(parent, name, imageId, imageIdSel);
 		mTreeCtrl->SetItemFont(id, mMainViewFonts[TREE_MAIN]);
-		mTreeIdSet.insert(id);
 		return id;
 	}
 	auto id = mTreeCtrl->AppendItem(parent, name, imageId, imageIdSel);
@@ -163,12 +160,102 @@ wxTreeItemId MainView::AddToTree(wxTreeItemId parent, const std::string& name, i
 	return id;
 }
 
+bool MainView::AddToViewMap(wxWindow* win, wxTreeItemId item)
+{
+	//win can be null pointer
+	auto [iter, inserted] = mDataViewsMap.insert({ item, win });
+	return inserted;
+}
+
 void MainView::OnTreeItemSelectionChanging(wxTreeEvent& evt)
 {
-	spdlog::get("log")->info("In selection changing");
+	
 }
 
 void MainView::OnTreeItemSelectionChanged(wxTreeEvent& evt)
 {
+	
+}
 
+void MainView::OnTreeItemActivated(wxTreeEvent& evt)
+{
+	auto item = evt.GetItem();
+	if (item.IsOk())
+	{
+		auto winIter = mDataViewsMap.find(item);
+		if (winIter != mDataViewsMap.end()){
+			wxWindow* win = winIter->second;
+			auto pageIndex = mViewBook->GetPageIndex(win);
+			if(pageIndex != wxNOT_FOUND){
+				if (!win->IsShown()) win->Show();
+				mViewBook->SetSelection(pageIndex);
+			}
+			else{
+				if (win != nullptr){
+					mViewBook->AddPage(win, mTreeCtrl->GetItemText(item), true, mTreeCtrl->GetItemImage(item));
+				}
+			}
+		}
+	}
+}
+
+void MainView::OnTreeItemExpanding(wxTreeEvent& evt)
+{
+
+}
+
+void MainView::OnTreeItemExpanded(wxTreeEvent& evt)
+{
+
+}
+
+void MainView::OnTreeItemRightClick(wxTreeEvent& evt)
+{
+	
+}
+
+void MainView::OnTreeItemMenu(wxTreeEvent& evt)
+{
+	
+}
+
+void MainView::OnTreeItemGetToolTip(wxTreeEvent& evt)
+{
+	
+}
+
+void MainView::OnTreeItemGetInfo(wxTreeEvent& evt)
+{
+	
+}
+
+void MainView::OnTreeItemSetInfo(wxTreeEvent& evt)
+{
+	
+}
+
+void MainView::OnBookClosed(wxAuiNotebookEvent& evt)
+{
+
+}
+
+void MainView::OnBookClose(wxAuiNotebookEvent& evt)
+{
+	auto pageIndex = evt.GetSelection();
+	if (pageIndex != wxNOT_FOUND) {
+		mViewBook->RemovePage(pageIndex);
+	}
+	evt.Veto();
+}
+
+void MainView::OnBookTabRClick(wxAuiNotebookEvent& evt)
+{
+}
+
+void MainView::OnBookPageChanged(wxAuiNotebookEvent& evt)
+{
+}
+
+void MainView::OnBookPageChanging(wxAuiNotebookEvent& evt)
+{
 }

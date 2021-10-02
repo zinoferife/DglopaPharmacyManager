@@ -144,6 +144,7 @@ public:
 class Inventories : public nl::vector_table < std::uint64_t, //inventory id
 	std::uint64_t, //product_id
 	nl::date_time_t , //date
+	nl::date_time_t , //date expiry
 	std::uint64_t, //invoice way bill no
 	std::uint32_t, // quantity in
 	std::uint32_t, // quantity out
@@ -155,7 +156,8 @@ public:
 	BEGIN_COL_NAME("Inventories")
 		COL_NAME("id")
 		COL_NAME("product_id")
-		COL_NAME("date")
+		COL_NAME("date_issued")
+		COL_NAME("date_expiry")
 		COL_NAME("invoice_way_bill_no")
 		COL_NAME("quantity_in")
 		COL_NAME("quantity_out")
@@ -168,7 +170,8 @@ public:
 	{
 		id = 0,
 		product_id,
-		date,
+		date_issued,
+		date_expiry,
 		invoice_way_bill_no,
 		quantity_in,
 		quantity_out,
@@ -274,6 +277,7 @@ public:
 	BEGIN_COL_NAME("prescriptions")
 		COL_NAME("id")
 		COL_NAME("uuid")
+		COL_NAME("date_issued")
 		COL_NAME("medication")
 		COL_NAME("dosage_form")
 		COL_NAME("strength")
@@ -291,6 +295,7 @@ public:
 	{
 		id = 0,
 		uuid,
+		date_issued,
 		medication,
 		dosage_form,
 		strength,

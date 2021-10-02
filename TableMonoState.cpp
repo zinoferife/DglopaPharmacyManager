@@ -39,6 +39,16 @@ void TableMonoState::CreateCustomersTable()
 
 void TableMonoState::CreateInventoriesTable()
 {
+	InventoryInstance::instance().as<Inventories::id>("Inventory id");
+	InventoryInstance::instance().as<Inventories::product_id>("Product id");
+	InventoryInstance::instance().as<Inventories::date_issued>("Date issued");
+	InventoryInstance::instance().as<Inventories::date_expiry>("Date expired");
+	InventoryInstance::instance().as<Inventories::invoice_way_bill_no>("Invoice way bill No");
+	InventoryInstance::instance().as<Inventories::quantity_in>("Quantity In");
+	InventoryInstance::instance().as<Inventories::quantity_out>("Quantity Out");
+	InventoryInstance::instance().as<Inventories::balance>("Balance");
+	InventoryInstance::instance().as<Inventories::user_issued>("User issued");
+	InventoryInstance::instance().as<Inventories::user_checked>("User checked");
 
 }
 
@@ -84,5 +94,7 @@ void TableMonoState::CreateAllTables()
 	CreateCustomersTable();
 	CreateProductDetailsTable();
 	CreatePrescriptionsTable();
+	CreateInventoriesTable();
 	CreateSalesTable();
+	CreateUsersTable();
 }

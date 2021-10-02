@@ -6,6 +6,7 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 EVT_CLOSE(MainFrame::OnClose)
 EVT_ERASE_BACKGROUND(MainFrame::onEraseBackground)
 EVT_MENU(wxID_ABOUT, MainFrame::OnAbout)
+EVT_MENU(MainFrame::ID_LOG, MainFrame::OnLog)
 END_EVENT_TABLE()
 
 
@@ -53,9 +54,9 @@ void MainFrame::CreateToolBar()
 {
 	wxAuiToolBar* toolbar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW);
 	toolbar->SetToolBitmapSize(wxSize(16, 16));
+	toolbar->AddTool(ID_TOOL_USER, wxT("User- DASHBOARD"), wxArtProvider::GetBitmap("user"));
 	toolbar->AddStretchSpacer();
 	toolbar->AddTool(ID_TOOL_DOWNLOAD_DATA, wxT("Download data"), wxArtProvider::GetBitmap("download"));
-	toolbar->AddTool(ID_TOOL_USER, wxT("User"), wxArtProvider::GetBitmap("user"));
 	toolbar->Realize();
 	mFrameManager->AddPane(toolbar, wxAuiPaneInfo().Name(wxT("Tool")).Caption(wxT("Tool bar"))
 		.ToolbarPane().Top().DockFixed().Resizable().Row(1).LeftDockable(false).RightDockable(false).Floatable(false).BottomDockable(false));
@@ -71,12 +72,16 @@ void MainFrame::CreateMenuBar()
 	Inventory->Append(ID_NEW_PRODUCT, "New product\tCtrl-D");
 	Inventory->Append(ID_PRODUCT_SEARCH, "Product search \tCtrl-Q");
 
+	wxMenu* views = new wxMenu;
+	views->Append(ID_LOG, "Log");
+
 	wxMenu* Help = new wxMenu;
 	Help->Append(wxID_ABOUT);
 
 
 	menubar->Append(file, wxT("&File"));
 	menubar->Append(Inventory, wxT("&Products"));
+	menubar->Append(views, wxT("&Views"));
 	menubar->Append(Help, wxT("Help"));
 	SetMenuBar(menubar);
 }
@@ -134,6 +139,8 @@ void MainFrame::CreateDataView()
 void MainFrame::Settings()
 {
 	wxTheColourDatabase->AddColour("Aqua", wxColour(240, 255, 255));
+	wxTheColourDatabase->AddColour("Navajo_white", wxColour(255, 222, 173));
+	wxTheColourDatabase->AddColour("Tomato", wxColour(255, 99, 71));
 }
 
 void MainFrame::OnClose(wxCloseEvent& event)
@@ -159,5 +166,14 @@ void MainFrame::OnAbout(wxCommandEvent& evt)
 	info.SetCopyright(wxT("(C) 2021 Afrobug Software"));
 	info.AddDeveloper("Ferife Zino :)");
 	wxAboutBox(info);
+}
+
+void MainFrame::OnLog(wxCommandEvent& evt)
+{
+	auto& logPane = mFrameManager->GetPane("mLogBook");
+	if (logPane.IsOk() && !logPane.IsShown()){
+		logPane.Show();
+		mFrameManager->Update();
+	}
 }
 

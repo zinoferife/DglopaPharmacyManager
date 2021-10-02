@@ -3,10 +3,17 @@
 BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_TOOL(ProductView::ID_ADD_PRODUCT, ProductView::OnAddProduct)
 	EVT_TOOL(ProductView::ID_REMOVE_PRODUCT, ProductView::OnRemoveProduct)
+	EVT_TOOL(ProductView::ID_GROUP_BY, ProductView::OnCheckInStock)
+	EVT_TOOL(ProductView::ID_REMOVE_GROUP_BY, ProductView::OnResetAttributes)
+	EVT_TOOL(ProductView::ID_BACK, ProductView::OnBack)
+	EVT_TOOL(ProductView::ID_QUICK_SORT_TEST, ProductView::OnQuickSortTest)
 	EVT_SEARCH(ProductView::ID_SEARCH, ProductView::OnSearchProduct)
+	EVT_TEXT(ProductView::ID_SEARCH, ProductView::OnSearchProduct)
 	EVT_MENU(ProductView::ID_SEARCH_BY_NAME, ProductView::OnSearchFlag)
 	EVT_MENU(ProductView::ID_SEARCH_BY_CATEGORY, ProductView::OnSearchFlag)
 	EVT_MENU(ProductView::ID_SEARCH_BY_PRICE, ProductView::OnSearchFlag)
+	EVT_DATAVIEW_ITEM_ACTIVATED(ProductView::ID_DATA_VIEW, ProductView::OnProductItemActivated)
+	EVT_DATAVIEW_COLUMN_HEADER_CLICK(ProductView::ID_DATA_VIEW, ProductView::OnColumnHeaderClick)
 	EVT_ERASE_BACKGROUND(ProductView::OnEraseBackground)
 END_EVENT_TABLE()
 
@@ -22,8 +29,10 @@ ProductView::~ProductView()
 ProductView::ProductView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize size)
 :wxPanel(parent, id, position, size){
 	mPanelManager = std::make_unique<wxAuiManager>(this);
+	CreateItemAttr();
 	SetDefaultArt();
 	CreateToolBar();
+	CreateInventoryList();
 	CreateDataView();
 	mPanelManager->Update();
 }
@@ -32,23 +41,29 @@ void ProductView::CreateToolBar()
 {
 	wxAuiToolBar* bar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW);
 	bar->SetToolBitmapSize(wxSize(16, 16));
-	bar->AddTool(wxID_ANY, wxEmptyString, wxArtProvider::GetBitmap("arrow_back"));
-	bar->AddTool(wxID_ANY, wxEmptyString, wxArtProvider::GetBitmap("arrow_next"));
+	bar->AddTool(ID_BACK, wxEmptyString, wxArtProvider::GetBitmap("arrow_back"));
+	bar->AddTool(ID_FORWARD, wxEmptyString, wxArtProvider::GetBitmap("arrow_next"));
 
 	//search bar
 	wxSearchCtrl* search = new wxSearchCtrl(bar, ID_SEARCH, wxEmptyString, wxDefaultPosition, wxSize(300, -1), wxWANTS_CHARS);
 	search->SetDescriptiveText("Search products");
+	search->AutoComplete(new SearchAutoComplete<Products, Products::name>(ProductInstance::instance()));
 	search->ShowCancelButton(true);
 	wxMenu* menu = new wxMenu;
 	menu->AppendRadioItem(ID_SEARCH_BY_NAME, "Search by name");
 	menu->AppendRadioItem(ID_SEARCH_BY_CATEGORY, "Search by category");
 	menu->AppendRadioItem(ID_SEARCH_BY_PRICE, "Search by price");
 	menu->Check(ID_SEARCH_BY_NAME, true);
+	mSearchFlags.set(0, true);
+
 	search->SetMenu(menu);
 	bar->AddControl(search);
 	
 	
 	bar->AddStretchSpacer();
+	bar->AddTool(ID_QUICK_SORT_TEST, wxEmptyString, wxArtProvider::GetBitmap("search"));
+	bar->AddTool(ID_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("maximize"));
+	bar->AddTool(ID_REMOVE_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("minimize"));
 	bar->AddTool(ID_ADD_PRODUCT, wxEmptyString, wxArtProvider::GetBitmap("action_add"));
 	bar->AddTool(ID_REMOVE_PRODUCT, wxEmptyString, wxArtProvider::GetBitmap("action_remove"));
 
@@ -61,37 +76,66 @@ void ProductView::CreateToolBar()
 
 void ProductView::CreateDataView()
 {
-	ProductInstance::instance().as<Products::id>("Serial number");
-	ProductInstance::instance().as<Products::name>("Name");
-	ProductInstance::instance().as<Products::package_size>("Package size");
-	ProductInstance::instance().as<Products::stock_count>("Stock count");
-	ProductInstance::instance().as<Products::unit_price>("Unit price");
-	ProductInstance::instance().as<Products::category_id>("Category id");
-
 	mDataView  = std::make_unique<wxDataViewCtrl>(this,ID_DATA_VIEW, wxDefaultPosition, wxDefaultSize, wxDV_ROW_LINES | wxNO_BORDER);
-	wxDataViewModel* ProductModel = new DataModel<Products>(ProductInstance::instance()); 
+	mModel = new DataModel<Products>(ProductInstance::instance());
+	//add columns
+
+	mDataView->AppendTextColumn(ProductInstance::instance().get_name(0), 0, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
+	mDataView->AppendTextColumn(ProductInstance::instance().get_name(1), 1, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
+	mDataView->AppendTextColumn(ProductInstance::instance().get_name(2), 2, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
+	mDataView->AppendTextColumn(ProductInstance::instance().get_name(3), 3, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
+	mDataView->AppendTextColumn(ProductInstance::instance().get_name(4), 4, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
+	mDataView->AllowMultiColumnSort(true);
+	mDataView->ToggleSortByColumn(Products::name);
+	wxDataViewModel* ProductModel = mModel;
 	mDataView->AssociateModel(ProductModel);
 	ProductModel->DecRef();
-	//add columns
-	/*
-	for (size_t i = 0; i < Products::column_count - 1; i++)
-	{
-		mDataView->AppendTextColumn(ProductInstance::instance().get_name(i), i);
-	}
-	*/
-
-	mDataView->AppendTextColumn(ProductInstance::instance().get_name(0), 0);
-	mDataView->AppendTextColumn(ProductInstance::instance().get_name(2), 2);
-	mDataView->AppendTextColumn(ProductInstance::instance().get_name(5), 5);
-
 	//load test
 	Products::set_default_row(100, "test", 0, 0, "0.00", 9);
-	for (int i = 0; i < 3; i++)
-	{
-		ProductInstance::instance().add(i, nl::to_string_date(nl::clock::now()), 100, 123, "now", 2345);
-	}
-	ProductInstance::instance().notify(nl::notifications::add_multiple, ProductInstance::instance().size());
+	std::random_device device{};
+	std::mt19937 engine(device());
+	std::uniform_int_distribution<int> dist(0, 100);
+	auto random = std::bind(dist, engine);
+
+	//test data
+	ProductInstance::instance().add_in_order<Products::name>(0, "Paracetamol", random(), random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(random(), "Panadol", random(), random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(random(), "Vitamin C", random(), 0, "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(random(), "Vitamin D", random(), random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(random(), "Vitamin E", random(), random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(random(), "Malaria syrup", random(), random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(1, "Malaria tablet", random(), random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(random(), "Malaria injection", random(), 0, "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(random(),"AntiBacteria", random(), random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(random(), "AntiBacteria drug", random(), random(), "now", 2345);
+
+
+	ProductInstance::instance().notify(nl::notifications::add_multiple, ProductInstance::instance().size());	
 	mPanelManager->AddPane(mDataView.get(), wxAuiPaneInfo().Name("DataView").Caption("ProductView").CenterPane());
+}
+
+void ProductView::CreateItemAttr()
+{
+	mInStock = std::make_shared<wxDataViewItemAttr>();
+	mExpired = std::make_shared<wxDataViewItemAttr>();
+	mInStock->SetBackgroundColour(wxTheColourDatabase->Find("Navajo_white"));
+	mExpired->SetBackgroundColour(wxTheColourDatabase->Find("Tomato"));
+}
+
+void ProductView::CreateInventoryList()
+{
+	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(),gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+
+	mInventoryView = std::make_unique<InventoryView>((std::uint64_t)0,this, ID_INVENTORY_VIEW);
+	mPanelManager->AddPane(mInventoryView.get(), wxAuiPaneInfo().Name("Inventory").Caption("InventoryView").CenterPane().Hide());
+
 }
 
 void ProductView::SetDefaultArt()
@@ -115,7 +159,9 @@ void ProductView::OnAddProduct(wxCommandEvent& evt)
 	id.generate();
 	
 	//std::string out = fmt::format("{:q}", id);
-	spdlog::get("log")->info("{:q}", id);
+	spdlog::get("log")->info("{:q}, size = {:d}", id, std::strlen(nl::uuid::to_string(id)));
+	ProductInstance::instance().add_default_in_order<Products::name>();
+	ProductInstance::instance().notify(nl::notifications::add, ProductInstance::instance().size() - 1);
 }
 
 void ProductView::OnRemoveProduct(wxCommandEvent& evt)
@@ -123,22 +169,61 @@ void ProductView::OnRemoveProduct(wxCommandEvent& evt)
 	spdlog::get("log")->info("OnRemoveProduct clicked");
 }
 
+void ProductView::OnCheckInStock(wxCommandEvent& evt)
+{
+	wxBusyCursor cu;
+	mDataView->Freeze();
+	auto group = ProductInstance::instance().map_group_by<Products::stock_count>();
+	auto instockIter = group.find(0);
+	if (instockIter != group.end())
+	{
+		auto outstockvector = instockIter->second.isolate_column<Products::id>();
+		mModel->AddAttribute(mInStock, std::move(outstockvector));
+	}
+	mDataView->Thaw();
+	mDataView->Refresh();
+}
+
+void ProductView::OnResetAttributes(wxCommandEvent& evt)
+{
+	wxBusyCursor cu;
+	mDataView->Freeze();
+	mModel->ResetAttributes();
+	mDataView->Thaw();
+	mDataView->Refresh();
+}
+
 void ProductView::OnSearchProduct(wxCommandEvent& evt)
 {
-	spdlog::get("log")->info("{}", evt.GetString().ToStdString());
+	std::string search = evt.GetString().ToStdString();
+	if (search.empty()) return;
+
 	if (mSearchFlags.test(0)){
-		spdlog::get("log")->info("name: {}", evt.GetString().ToStdString());
-	}
-	else if (mSearchFlags.test(1)){
-		spdlog::get("log")->info("category: {}", evt.GetString().ToStdString());
+		OnSearchByName(search);
+	}else if (mSearchFlags.test(1)){
+		OnSearchByCategory(search);
 	}else if (mSearchFlags.test(2)){
-		spdlog::get("log")->info("price: {}", evt.GetString().ToStdString());
+		OnSearchByPrice(search);
 	}
 }
 
 void ProductView::OnEraseBackground(wxEraseEvent& evt)
 {
 	evt.Skip();
+}
+
+void ProductView::OnQuickSortTest(wxCommandEvent& evt)
+{
+	ProductInstance::instance().quick_sort<Products::id>();
+}
+
+void ProductView::OnBack(wxCommandEvent& evt)
+{
+	if (!mPanelManager->GetPane("DataView").IsShown()){
+		mPanelManager->GetPane("Inventory").Hide();
+		mPanelManager->GetPane("DataView").Show();
+		mPanelManager->Update();
+	}
 }
 
 void ProductView::OnSearchFlag(wxCommandEvent& evt)
@@ -163,7 +248,16 @@ void ProductView::OnSearchFlag(wxCommandEvent& evt)
 
 void ProductView::OnSearchByName(const std::string& SearchString)
 {
-
+	if (SearchString.empty()) return;
+	Products::row_t row;
+	if (ProductInstance::instance().binary_find<Products::name>(SearchString, row))
+	{
+		mDataView->Freeze();
+		spdlog::get("log")->info("{}", nl::row_value<Products::name>(row));
+		mModel->AddAttribute(mExpired, nl::row_value<Products::id>(row));
+		mDataView->Thaw();
+		mDataView->Refresh();
+	}
 }
 
 void ProductView::OnSearchByCategory(const std::string& SearchString)
@@ -174,4 +268,84 @@ void ProductView::OnSearchByCategory(const std::string& SearchString)
 void ProductView::OnSearchByPrice(const std::string& SearchString)
 {
 
+}
+
+void ProductView::OnProductItemSelected(wxDataViewEvent& evt)
+{
+}
+
+void ProductView::OnProductItemActivated(wxDataViewEvent& evt)
+{
+	auto item = evt.GetItem();
+	if (!item.IsOk()) return;
+	int index = mModel->GetDataViewItemIndex(evt.GetItem());
+	auto& InventoryPane = mPanelManager->GetPane("Inventory");
+	if (InventoryPane.IsOk() && index != -1){
+		mPanelManager->GetPane("DataView").Hide();
+		auto& row = ProductInstance::instance()[index];
+		if (mInventoryView->GetProductId() != nl::row_value<Products::id>(row)){
+			mInventoryView->ResetProductInventoryList(nl::row_value<Products::id>(row));
+		}
+		InventoryPane.Show();
+		mPanelManager->Update();
+	}
+
+}
+
+void ProductView::OnColumnHeaderClick(wxDataViewEvent& evt)
+{
+	wxBusyCursor cu;
+	mDataView->Freeze();
+	auto columnIndex = evt.GetColumn();
+	int oldIndex = -1;
+	wxDataViewColumn* col = mDataView->GetSortingColumn();
+	if (col){
+		oldIndex = col->GetModelColumn();
+	}
+	col = mDataView->GetColumn(columnIndex);
+	if (columnIndex != wxNOT_FOUND){
+		if(oldIndex != -1 && oldIndex != columnIndex) mDataView->ToggleSortByColumn(oldIndex);
+		switch (columnIndex)
+		{
+		case Products::package_size:
+			mDataView->ToggleSortByColumn(Products::package_size);
+			col->SetSortOrder(!col->IsSortOrderAscending());
+			mModel->Resort();
+			break;
+		case Products::id:
+			mDataView->ToggleSortByColumn(Products::id);
+			col->SetSortOrder(!col->IsSortOrderAscending());
+			mModel->Resort();
+			break;
+		case Products::unit_price:
+			mDataView->ToggleSortByColumn(Products::unit_price);
+			col->SetSortOrder(!col->IsSortOrderAscending());
+			mModel->Resort();
+			break;
+		case Products::name:
+			mDataView->ToggleSortByColumn(Products::name);
+			col->SetSortOrder(!col->IsSortOrderAscending());
+			mModel->Resort();
+			break;
+		case Products::stock_count:
+			mDataView->ToggleSortByColumn(Products::stock_count);
+			col->SetSortOrder(!col->IsSortOrderAscending());
+			mModel->Resort();
+			break;
+		default:
+			break;
+		}
+	}
+	mDataView->Thaw();
+	mDataView->Refresh();
+}
+
+int ProductView::gen_random()
+{
+	static std::random_device device{};
+	static std::mt19937 engine(device());
+	static std::uniform_int_distribution<int> dist(0, 100);
+	static auto random = std::bind(dist, engine);
+
+	return random();
 }
