@@ -24,9 +24,6 @@
     <ClCompile Include="LogSink.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DataModel.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ArtProvider.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -40,6 +37,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="InventoryView.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="InventoryDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -60,9 +60,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Instances.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DataModel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ArtProvider.h">
@@ -87,6 +84,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="InventoryView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="InventoryDialog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -12,7 +12,7 @@
 #include "DataModelBase.h"
 #include "Instances.h"
 #include "SearchAutoComplete.h"
-
+#include "InventoryDialog.h"
 
 #include <nl_uuid.h>
 
@@ -33,10 +33,11 @@ public:
 	
 protected:
 	virtual wxListItemAttr* OnGetItemAttr(long item) const override;
-	virtual int OnGetItemColumnImage(long item, long column) const override;
 	virtual int OnGetItemImage(long item) const override;
 	virtual wxString OnGetItemText(long item, long column) const override;
 	virtual bool OnGetItemIsChecked(long item) const override;
+
+	void SetupImages();
 
 public:
 	void ResetProductInventoryList(std::uint64_t productID);
@@ -66,20 +67,38 @@ public:
 		return mProductInventoryData;
 	}
 
+public:
+	void OnColumnHeaderClick(wxListEvent& evt);
+	void OnRightClick(wxListEvent& evt);
+	void OnItemActivated(wxListEvent& evt);
 
+
+	//tool bar handlers
+	void OnAddInventory(wxCommandEvent& evt);
+	void OnRemoveInventory(wxCommandEvent& evt);
 private:
 	void CreateInventoryView();
+	void CalculateBalance(Inventories::row_t& row);
+
+	//inventory table notification handlers 
+	void OnUpdateNotification(nl::notifications notif, const Inventories::table_t& table, size_t col, const size_t& row);
+	void OnNotification(nl::notifications notif, const Inventories::table_t& table, const size_t& row);
+
+
+	//utiliy functions 
+	void AddInOrder(const Inventories::row_t& row);
 
 private:
 	//different attributes
 
 
 	//different images
-
+	std::int32_t mSortColumn;
 	std::uint64_t mProductId;
 	Inventories mProductInventoryData;
 	std::unordered_map<std::uint64_t, std::shared_ptr<wxListItemAttr>> mAttributesTable{};
 	std::unordered_map<std::uint64_t, int> mImageTable{};
 	std::unordered_set<std::uint64_t> mCheckedTable{};
+	std::array<bool, Inventories::column_count - 2> mSortColOrder;
 };
 

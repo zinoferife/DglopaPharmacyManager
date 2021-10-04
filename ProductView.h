@@ -45,17 +45,25 @@ public:
 		ID_GROUP_BY,
 		ID_REMOVE_GROUP_BY,
 		ID_QUICK_SORT_TEST,
-		ID_INVENTORY_VIEW
+		ID_INVENTORY_VIEW,
+		ID_INVENTORY_VIEW_TOOL_ADD,
+		ID_INVENTORY_VIEW_TOOL_REMOVE,
+		ID_INVENTORY_PRODUCT_NAME
 	};
 
 
 private: 
 	void CreateToolBar();
+	void CreateInentoryToolBar();
 	void CreateDataView();
 	void CreateItemAttr();
+	//test
 	void CreateInventoryList();
 
+	void CreateInventory(std::uint64_t product_id);
 	void SetDefaultArt();
+	void ShowInventoryToolBar(const Products::row_t& row);
+	void HideInventoryToolBar();
 //event table
 private:
 	void OnAddProduct(wxCommandEvent& evt);
@@ -67,6 +75,10 @@ private:
 	void OnQuickSortTest(wxCommandEvent& evt);
 	void OnBack(wxCommandEvent& evt);
 
+	//evts for inventory view
+	void OnInventoryViewColClick(wxListEvent& evt);
+	void OnInventoryAddTool(wxCommandEvent& evt);
+	void OnInventoryRemoveTool(wxCommandEvent& evt);
 	//search
 	void OnSearchFlag(wxCommandEvent& evt);
 	void OnSearchByName(const std::string& SearchString);
@@ -90,6 +102,7 @@ private:
 	//product view item attributes
 	std::shared_ptr<wxDataViewItemAttr> mInStock;
 	std::shared_ptr<wxDataViewItemAttr> mExpired;
+	wxAuiToolBarItem* mInventoryProductName;
 
 	DECLARE_EVENT_TABLE()
 };

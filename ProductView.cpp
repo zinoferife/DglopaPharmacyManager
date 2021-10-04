@@ -15,6 +15,7 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_DATAVIEW_ITEM_ACTIVATED(ProductView::ID_DATA_VIEW, ProductView::OnProductItemActivated)
 	EVT_DATAVIEW_COLUMN_HEADER_CLICK(ProductView::ID_DATA_VIEW, ProductView::OnColumnHeaderClick)
 	EVT_ERASE_BACKGROUND(ProductView::OnEraseBackground)
+	EVT_LIST_COL_CLICK(ProductView::ID_INVENTORY_VIEW, ProductView::OnInventoryViewColClick)
 END_EVENT_TABLE()
 
 ProductView::ProductView()
@@ -24,6 +25,7 @@ ProductView::ProductView()
 ProductView::~ProductView()
 {
 	mDataView.release();
+	mInventoryView.release();
 }
 
 ProductView::ProductView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize size)
@@ -72,6 +74,22 @@ void ProductView::CreateToolBar()
 	mPanelManager->AddPane(bar, wxAuiPaneInfo().Name(wxT("Tool")).Caption(wxT("Tool bar")).ToolbarPane().Top()
 		.Resizable().MinSize(wxSize(-1, 30)).DockFixed()
 		.LeftDockable(false).RightDockable(false).Floatable(false).BottomDockable(false));
+}
+
+void ProductView::CreateInentoryToolBar()
+{
+	wxAuiToolBar* bar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW);
+	bar->SetToolBitmapSize(wxSize(16, 16));
+	bar->AddTool(ID_BACK, wxEmptyString, wxArtProvider::GetBitmap("arrow_back"));
+	mInventoryProductName = bar->AddTool(ID_INVENTORY_PRODUCT_NAME, wxEmptyString, wxNullBitmap);
+	bar->AddStretchSpacer();
+	bar->AddTool(ID_INVENTORY_VIEW_TOOL_ADD, wxEmptyString, wxArtProvider::GetBitmap("action_add"));
+	bar->AddTool(ID_INVENTORY_VIEW_TOOL_REMOVE, wxEmptyString, wxArtProvider::GetBitmap("action_remove"));
+
+	bar->Realize();
+	mPanelManager->AddPane(bar, wxAuiPaneInfo().Name(wxT("InventoryTool")).Caption(wxT("Inventory tool bar")).ToolbarPane().Top()
+		.Resizable().MinSize(wxSize(-1, 30)).DockFixed()
+		.LeftDockable(false).RightDockable(false).Floatable(false).BottomDockable(false).Hide());
 }
 
 void ProductView::CreateDataView()
@@ -124,18 +142,42 @@ void ProductView::CreateItemAttr()
 
 void ProductView::CreateInventoryList()
 {
+	//this is for testing 
 	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(),gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(),gen_random(), gen_random(), gen_random(), 0, gen_random(), gen_random());
 	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
 	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), 0, gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
 	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
 	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
 	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
 	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
 
-	mInventoryView = std::make_unique<InventoryView>((std::uint64_t)0,this, ID_INVENTORY_VIEW);
+	//CreateInventory(0);
+}
+
+void ProductView::CreateInventory(std::uint64_t product_id)
+{
+	mInventoryView = std::make_unique<InventoryView>(product_id, this, ID_INVENTORY_VIEW);
+	wxImageList* imageList = new wxImageList(16, 16);
+	imageList->Add(wxArtProvider::GetBitmap("action_delete"));
+	imageList->Add(wxArtProvider::GetBitmap("action_check"));
+	CreateInentoryToolBar();
+	mInventoryView->AssignImageList(imageList, wxIMAGE_LIST_SMALL);
 	mPanelManager->AddPane(mInventoryView.get(), wxAuiPaneInfo().Name("Inventory").Caption("InventoryView").CenterPane().Hide());
-
 }
 
 void ProductView::SetDefaultArt()
@@ -151,6 +193,25 @@ void ProductView::SetDefaultArt()
 	art->SetMetric(wxAUI_DOCKART_PANE_BORDER_SIZE, 0);
 	art->SetMetric(wxAUI_DOCKART_GRADIENT_TYPE, wxAUI_GRADIENT_HORIZONTAL);
 	mPanelManager->SetFlags(mPanelManager->GetFlags() | wxAUI_MGR_ALLOW_ACTIVE_PANE | wxAUI_MGR_VENETIAN_BLINDS_HINT);
+}
+
+void ProductView::ShowInventoryToolBar(const Products::row_t& row_)
+{
+	auto& pane = mPanelManager->GetPane("InventoryTool");
+	wxAuiToolBar* bar = wxDynamicCast(pane.window, wxAuiToolBar);
+	if (bar){
+		const auto& name = nl::row_value<Products::name>(row_);
+		mInventoryProductName->SetLabel(fmt::format("{} - Inventory card", name));
+		bar->Refresh();
+	}
+	mPanelManager->GetPane("Tool").Hide();
+	pane.Show();
+}
+
+void ProductView::HideInventoryToolBar()
+{
+	mPanelManager->GetPane("InventoryTool").Hide();
+	mPanelManager->GetPane("Tool").Show();
 }
 
 void ProductView::OnAddProduct(wxCommandEvent& evt)
@@ -220,10 +281,31 @@ void ProductView::OnQuickSortTest(wxCommandEvent& evt)
 void ProductView::OnBack(wxCommandEvent& evt)
 {
 	if (!mPanelManager->GetPane("DataView").IsShown()){
+		HideInventoryToolBar();
 		mPanelManager->GetPane("Inventory").Hide();
 		mPanelManager->GetPane("DataView").Show();
 		mPanelManager->Update();
 	}
+}
+
+void ProductView::OnInventoryViewColClick(wxListEvent& evt)
+{
+	if (mInventoryView)
+	{
+		mInventoryView->Freeze();
+		mInventoryView->OnColumnHeaderClick(evt);
+		mInventoryView->Thaw();
+		mInventoryView->Refresh();
+	}
+}
+
+void ProductView::OnInventoryAddTool(wxCommandEvent& evt)
+{
+
+}
+
+void ProductView::OnInventoryRemoveTool(wxCommandEvent& evt)
+{
 }
 
 void ProductView::OnSearchFlag(wxCommandEvent& evt)
@@ -276,20 +358,31 @@ void ProductView::OnProductItemSelected(wxDataViewEvent& evt)
 
 void ProductView::OnProductItemActivated(wxDataViewEvent& evt)
 {
+	//deferend creation, the pane is invalid, have to get another pane to show
 	auto item = evt.GetItem();
 	if (!item.IsOk()) return;
 	int index = mModel->GetDataViewItemIndex(evt.GetItem());
+	if (index == -1) return;
 	auto& InventoryPane = mPanelManager->GetPane("Inventory");
-	if (InventoryPane.IsOk() && index != -1){
+	if (InventoryPane.IsOk()){
 		mPanelManager->GetPane("DataView").Hide();
 		auto& row = ProductInstance::instance()[index];
 		if (mInventoryView->GetProductId() != nl::row_value<Products::id>(row)){
 			mInventoryView->ResetProductInventoryList(nl::row_value<Products::id>(row));
 		}
 		InventoryPane.Show();
+		ShowInventoryToolBar(row);
+		mPanelManager->Update();
+	}else{
+		//inventory not created, create
+		mPanelManager->GetPane("DataView").Hide();
+		auto& row = ProductInstance::instance()[index];
+		CreateInventory(nl::row_value<Products::id>(row));
+		//get pane and update
+		mPanelManager->GetPane("Inventory").Show();
+		ShowInventoryToolBar(row);
 		mPanelManager->Update();
 	}
-
 }
 
 void ProductView::OnColumnHeaderClick(wxDataViewEvent& evt)
