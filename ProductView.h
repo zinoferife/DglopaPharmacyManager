@@ -90,6 +90,11 @@ private:
 	void OnProductItemActivated(wxDataViewEvent& evt);
 	void OnColumnHeaderClick(wxDataViewEvent& evt);
 
+
+	void RegisterInventoryNotification();
+	void UnregisterInventoryNotification();
+	void OnInventoryAddNotification(nl::notifications notif, const Inventories::table_t& table, const Inventories::notification_data& data);
+	void UpdateProductStockCount(Inventories::const_iterator row);
 private:
 	//for test 
 	static int gen_random();

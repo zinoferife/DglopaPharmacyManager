@@ -31,12 +31,10 @@ public:
 	DataModel(Data& instance)
 	: mData(instance), mPastLastAdded(-1){
 		mData.sink().add_listener<DataModel, &DataModel::Notifications>(this);
-		mData.update_sink().add_listener<DataModel, &DataModel::UpdateNotifications>(this);
 	}
 	virtual ~DataModel() 
 	{
 		mData.sink().remove_listener<DataModel, & DataModel::Notifications>(this);
-		mData.update_sink().remove_listener<DataModel, &DataModel::UpdateNotifications>(this);
 	}
 	virtual bool HasContainerColumns(const wxDataViewItem& item) const
 	{
@@ -171,24 +169,25 @@ public:
 	}
 
 public:
-	void Notifications(nl::notifications notif, const typename Data::table_t& table, const size_t& row_added)
+	void Notifications(nl::notifications notif, const typename Data::table_t& table, const typename Data::notification_data& data)
 	{
 		switch (notif)
 		{
 		case nl::notifications::add:
 		{
 			//DataViewItem starts from one, 0 is invalid so pair(id*:0x00...1, index:0)
-			auto [iter, inserted] = mIndexMap.insert(std::make_pair(wxDataViewItem(UIntToPtr(row_added + 1)), row_added));
+			auto [iter, inserted] = mIndexMap.insert({ wxDataViewItem(UIntToPtr(mData.size())), mData.size()-1 });
 			if (inserted) {
 				ItemAdded(wxDataViewItem(0), iter->first);
-				mPastLastAdded = row_added + 1;
+				mPastLastAdded = mData.size();
 			}
-			break;
 		}
+		break;
 		case nl::notifications::add_multiple:
 		{
 			//assumes that the rows is added at the back of the table, maybe using relation::append_relation
 			//undefined(lol) if not appened at the back 
+			size_t row_added = data.count_of_added;
 			if (row_added > 0)
 			{
 				if (!mIndexMap.empty() || mPastLastAdded != -1)
@@ -226,20 +225,18 @@ public:
 
 			}
 		}
-		}
-	}
-	void UpdateNotifications(nl::notifications notif, const typename Data::table_t& table, size_t column, const size_t& row_added)
-	{
-		auto iter = mIndexMap.find(wxDataViewItem(UIntToPtr(row_added + 1)));
-		if (iter == mIndexMap.end()) return;
-		switch (notif)
-		{
+		break;
 		case nl::notifications::update:
-			ValueChanged(iter->first, column);
-			break;
+		{
+			size_t row_added = mData.get_index(data.row_iterator);
+			auto iter = mIndexMap.find(wxDataViewItem(UIntToPtr(row_added + 1)));
+			if (iter == mIndexMap.end()) return;
+			ValueChanged(iter->first, data.column);
+		}
+		break;
+
 		}
 	}
-
 //attributes
 public:
 	void AddAttribute(std::shared_ptr<wxDataViewItemAttr> attr, const std::vector<id_t>&& ids)

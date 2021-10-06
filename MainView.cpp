@@ -65,8 +65,10 @@ void MainView::CreateSalesView()
 	for (size_t i = 0; i < 30; i++)
 	{
 		SalesInstance::instance().add(i, i, i * 2, (i * 10 % 5), 100, nl::clock::now(), "0.08");
-		SalesInstance::instance().notify(nl::notifications::add, i);
 	}
+	Sales::notification_data data{};
+	data.count_of_added = 30;
+	SalesInstance::instance().notify(nl::notifications::add_multiple, data);
 	mSView->Hide();
 }
 

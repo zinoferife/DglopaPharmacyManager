@@ -25,6 +25,7 @@ ProductView::ProductView()
 
 ProductView::~ProductView()
 {
+	UnregisterInventoryNotification();
 	mDataView.release();
 	mInventoryView.release();
 }
@@ -32,6 +33,7 @@ ProductView::~ProductView()
 ProductView::ProductView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize size)
 :wxPanel(parent, id, position, size){
 	mPanelManager = std::make_unique<wxAuiManager>(this);
+	RegisterInventoryNotification();
 	CreateItemAttr();
 	SetDefaultArt();
 	CreateToolBar();
@@ -128,8 +130,9 @@ void ProductView::CreateDataView()
 	ProductInstance::instance().add_in_order<Products::name>(random(),"AntiBacteria", random(), random(), "now", 2345);
 	ProductInstance::instance().add_in_order<Products::name>(random(), "AntiBacteria drug", random(), random(), "now", 2345);
 
-
-	ProductInstance::instance().notify(nl::notifications::add_multiple, ProductInstance::instance().size());	
+	Products::notification_data data{};
+	data.count_of_added = ProductInstance::instance().size();
+	ProductInstance::instance().notify(nl::notifications::add_multiple, data);	
 	mPanelManager->AddPane(mDataView.get(), wxAuiPaneInfo().Name("DataView").Caption("ProductView").CenterPane());
 }
 
@@ -222,8 +225,9 @@ void ProductView::OnAddProduct(wxCommandEvent& evt)
 	
 	//std::string out = fmt::format("{:q}", id);
 	spdlog::get("log")->info("{:q}, size = {:d}", id, std::strlen(nl::uuid::to_string(id)));
-	ProductInstance::instance().add_default_in_order<Products::name>();
-	ProductInstance::instance().notify(nl::notifications::add, ProductInstance::instance().size() - 1);
+	Products::notification_data data{};
+	data.row_iterator = ProductInstance::instance().add_default_in_order<Products::name>();
+	ProductInstance::instance().notify(nl::notifications::add, data);
 }
 
 void ProductView::OnRemoveProduct(wxCommandEvent& evt)
@@ -333,11 +337,12 @@ void ProductView::OnSearchByName(const std::string& SearchString)
 {
 	if (SearchString.empty()) return;
 	Products::row_t row;
-	if (ProductInstance::instance().binary_find<Products::name>(SearchString, row))
+	auto it = ProductInstance::instance().binary_find<Products::name>(SearchString);
+	if (it != ProductInstance::instance().end())
 	{
 		mDataView->Freeze();
-		spdlog::get("log")->info("{}", nl::row_value<Products::name>(row));
-		mModel->AddAttribute(mExpired, nl::row_value<Products::id>(row));
+		spdlog::get("log")->info("{}", nl::row_value<Products::name>(*it));
+		mModel->AddAttribute(mExpired, nl::row_value<Products::id>(*it));
 		mDataView->Thaw();
 		mDataView->Refresh();
 	}
@@ -432,6 +437,51 @@ void ProductView::OnColumnHeaderClick(wxDataViewEvent& evt)
 	}
 	mDataView->Thaw();
 	mDataView->Refresh();
+}
+
+void ProductView::RegisterInventoryNotification()
+{
+	InventoryInstance::instance().sink().add_listener<ProductView, & ProductView::OnInventoryAddNotification>(this);
+}
+
+void ProductView::UnregisterInventoryNotification()
+{
+	InventoryInstance::instance().sink().remove_listener<ProductView, &ProductView::OnInventoryAddNotification>(this);
+}
+
+void ProductView::OnInventoryAddNotification(nl::notifications notif, const Inventories::table_t& table, const Inventories::notification_data& data)
+{
+	switch (notif)
+	{
+	case nl::notifications::add:
+		UpdateProductStockCount(data.row_iterator);
+		break;
+	case nl::notifications::add_multiple:
+		break;
+	case nl::notifications::remove:
+		break;
+	case nl::notifications::remove_multiple:
+		break;
+	default:
+		break;
+	}
+
+}
+
+void ProductView::UpdateProductStockCount(Inventories::const_iterator row)
+{
+	uint32_t balance = nl::row_value<Inventories::balance>(*row);
+	auto it = ProductInstance::instance().find_on<Products::id>(nl::row_value<Inventories::product_id>(*row));
+	if (it != ProductInstance::instance().end())
+	{
+		nl::row_value<Products::stock_count>(*it) = balance;
+		
+		Products::notification_data data{};
+		data.row_iterator = it;
+		data.column = Products::stock_count;
+		ProductInstance::instance().notify(nl::notifications::update, data);
+		mModel->RemoveAttribute(nl::row_value<Products::id>(*it));
+	}
 }
 
 int ProductView::gen_random()

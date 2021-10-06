@@ -81,8 +81,7 @@ private:
 	void CalculateBalance(Inventories::row_t& row);
 
 	//inventory table notification handlers 
-	void OnUpdateNotification(nl::notifications notif, const Inventories::table_t& table, size_t col, const size_t& row);
-	void OnNotification(nl::notifications notif, const Inventories::table_t& table, const size_t& row);
+	void OnNotification(nl::notifications notif, const Inventories::table_t& table, const Inventories::notification_data& data);
 
 
 	//utiliy functions 

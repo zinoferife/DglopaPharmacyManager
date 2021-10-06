@@ -69,8 +69,9 @@ void InventoryView::OnAddInventory(wxCommandEvent& evt)
 			nl::row_value<Inventories::user_issued>(new_row) = 200345;
 			nl::row_value<Inventories::user_checked>(new_row) = 200345;
 
-			InventoryInstance::instance().add(new_row);
-			InventoryInstance::instance().notify(nl::notifications::add, InventoryInstance::instance().size() - 1);
+			Inventories::notification_data data{};
+			data.row_iterator = InventoryInstance::instance().add(new_row);
+			InventoryInstance::instance().notify(nl::notifications::add, data);
 			break;
 		}
 		else if(RetCode == wxID_CANCEL){
@@ -108,19 +109,14 @@ void InventoryView::CalculateBalance(Inventories::row_t& row)
 	nl::row_value<Inventories::balance>(row) = nl::row_value<Inventories::balance>(*max) + nl::row_value<Inventories::quantity_in>(row);
 }
 
-void InventoryView::OnUpdateNotification(nl::notifications notif, const Inventories::table_t& table, size_t col, const size_t& row)
-{
-}
-
-void InventoryView::OnNotification(nl::notifications notif, const Inventories::table_t& table, const size_t& row)
+void InventoryView::OnNotification(nl::notifications notif, const Inventories::table_t& table, const Inventories::notification_data& data)
 {
 	switch (notif)
 	{
 	case nl::notifications::add:
-		auto& row_ = table[row];
-		if (mProductId == nl::row_value<Inventories::product_id>(row_))
+		if (mProductId == nl::row_value<Inventories::product_id>(*(data.row_iterator)))
 		{
-			AddInOrder(row_);
+			AddInOrder(*(data.row_iterator));
 		}
 	}
 
