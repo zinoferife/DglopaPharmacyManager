@@ -16,6 +16,7 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_DATAVIEW_COLUMN_HEADER_CLICK(ProductView::ID_DATA_VIEW, ProductView::OnColumnHeaderClick)
 	EVT_ERASE_BACKGROUND(ProductView::OnEraseBackground)
 	EVT_LIST_COL_CLICK(ProductView::ID_INVENTORY_VIEW, ProductView::OnInventoryViewColClick)
+	EVT_TOOL(ProductView::ID_INVENTORY_VIEW_TOOL_ADD, ProductView::OnInventoryAddTool)
 END_EVENT_TABLE()
 
 ProductView::ProductView()
@@ -301,7 +302,7 @@ void ProductView::OnInventoryViewColClick(wxListEvent& evt)
 
 void ProductView::OnInventoryAddTool(wxCommandEvent& evt)
 {
-
+	mInventoryView->OnAddInventory(evt);
 }
 
 void ProductView::OnInventoryRemoveTool(wxCommandEvent& evt)
@@ -435,8 +436,7 @@ void ProductView::OnColumnHeaderClick(wxDataViewEvent& evt)
 
 int ProductView::gen_random()
 {
-	static std::random_device device{};
-	static std::mt19937 engine(device());
+	static std::mt19937 engine(std::random_device{}());
 	static std::uniform_int_distribution<int> dist(0, 100);
 	static auto random = std::bind(dist, engine);
 

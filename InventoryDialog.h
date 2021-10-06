@@ -4,9 +4,27 @@
 #include <wx/calctrl.h>
 #include <wx/bmpbuttn.h>
 #include <wx/sizer.h>
+#include <wx/valnum.h>
 
 #include "Tables.h"
 #include "ArtProvider.h"
+
+class CalendarDialog : public wxDialog
+{
+public:
+	enum
+	{
+		ID_CALENDAR = wxID_HIGHEST + 3445
+	};
+
+	CalendarDialog(wxWindow* parent);
+	wxCalendarCtrl* mCalender;
+	void OnCalender(wxCalendarEvent& evnt);
+
+	DECLARE_EVENT_TABLE()
+};
+
+
 
 
 class InventoryDialog : public wxDialog
@@ -27,12 +45,12 @@ private:
 	void CreateDialog();
 	void SizeDialog();
 
-	wxStaticText* texts;
+	wxStaticText* texts[4];
 	wxSpinCtrl* mQuantityInControl;
 	wxTextCtrl* mExpiryDate;
 	wxTextCtrl* mInvoiceWayBill;
 	wxBitmapButton* mCalenderButton;
-	wxButton* mOkCancel;
+	wxButton* mOkCancel[2];
 
 private:
 	void OnOk(wxCommandEvent& evt);

@@ -16,12 +16,23 @@ InventoryDialog::InventoryDialog(Inventories::row_t& row_, wxWindow* parent)
 bool InventoryDialog::TransferDataFromWindow()
 {
 	nl::row_value<Inventories::quantity_in>(row) = mQuantityInControl->GetValue();
+	std::uint64_t value = 0;
+	if (mInvoiceWayBill->GetValue().ToULongLong(&value))
+	{
+		nl::row_value<Inventories::invoice_way_bill_no>(row) = value;
+	}
+	else return false;
+
 	nl::date_time_t exp_date;
-	bool done = false;
 	try {
-		exp_date = nl::from_string_date(mExpiryDate->GetValue().ToStdString());	
-	}catch (std::logic_error& error) {
-			wxMessageBox(fmt::format("{} is invalid, date format should be in \'YYYY-MM-DD\'"), mExpiryDate->GetValue().ToStdString(), wxICON_ERROR | wxOK);
+		std::string value = mExpiryDate->GetValue().ToStdString();
+		if (!value.empty()) {
+			exp_date = nl::from_string_date(value);
+			nl::row_value<Inventories::date_expiry>(row) = exp_date;
+		}
+		else return false;
+	}catch (std::exception& error) {
+			//wxMessageBox(fmt::format("{} is invalid, date format should be in \'YYYY-MM-DD\'"), mExpiryDate->GetValue().ToStdString(), wxICON_ERROR | wxOK);
 			return false;
 	}
 	return true;
@@ -34,19 +45,32 @@ bool InventoryDialog::TransferDataToWindow()
 
 void InventoryDialog::CreateDialog()
 {
-	texts = new wxStaticText[2];
-	texts[0].Create(this, wxID_ANY, "Quantity in: ", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
-	texts[1].Create(this, wxID_ANY, "Expiry date: ", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+	SetBackgroundColour(*wxWHITE);
+	ClearBackground();
+	texts[0] = new wxStaticText;
+	texts[1] = new wxStaticText;
+	texts[2] = new wxStaticText;
+	texts[3] = new wxStaticText;
+
+	texts[0]->Create(this, wxID_ANY, "ENTER INVENTORY", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+	texts[0]->SetFont(wxFont(10, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD));
+	texts[1]->Create(this, wxID_ANY, "Invoice way bill number: ", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+	texts[2]->Create(this, wxID_ANY, "Quantity in: ", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+	texts[3]->Create(this, wxID_ANY, "Expiry date: ", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 	
-	mOkCancel = new wxButton[2];
-	mOkCancel[0].Create(this, wxID_OK, "OK");
-	mOkCancel[0].Create(this, wxID_CANCEL, "Cancel");
+	mOkCancel[0] = new wxButton;
+	mOkCancel[1] = new wxButton;
+	mOkCancel[0]->Create(this, wxID_OK, "OK");
+	mOkCancel[1]->Create(this, wxID_CANCEL, "Cancel");
 	//look for a calender icon
 	mCalenderButton = new wxBitmapButton(this, ID_CALENDAR, wxArtProvider::GetBitmap("application"));
+	mCalenderButton->SetBackgroundColour(*wxWHITE);
 
-	mQuantityInControl = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS | wxALIGN_LEFT, 0, 
-		std::numeric_limits<typename Inventories::elem_t<Inventories::quantity_in>>::max());
+	mQuantityInControl = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS | wxALIGN_LEFT, 0,
+		std::numeric_limits<int>::max());
 	mExpiryDate = new wxTextCtrl(this, wxID_ANY);
+	mInvoiceWayBill = new wxTextCtrl(this, wxID_ANY);
+	mInvoiceWayBill->SetValidator(wxTextValidator{ wxFILTER_DIGITS });
 }
 
 void InventoryDialog::SizeDialog()
@@ -54,24 +78,32 @@ void InventoryDialog::SizeDialog()
 	wxBoxSizer* topSizer = new wxBoxSizer(wxVERTICAL);
 	wxBoxSizer* boxSizer = new wxBoxSizer(wxVERTICAL);
 	wxBoxSizer* okCancleSizer = new wxBoxSizer(wxHORIZONTAL);
+	wxFlexGridSizer* flexSizer = new wxFlexGridSizer(3,3, 5,5);
 
 	okCancleSizer->AddStretchSpacer();
-	okCancleSizer->Add(&mOkCancel[0], wxSizerFlags().Align(wxALIGN_CENTER_VERTICAL).Border(wxALL, 5));
-	okCancleSizer->Add(&mOkCancel[1], wxSizerFlags().Align(wxALIGN_CENTER_VERTICAL).Border(wxALL, 5));
+	okCancleSizer->Add(mOkCancel[0], wxSizerFlags().Align(wxALIGN_CENTER_VERTICAL).Border(wxALL, 5));
+	okCancleSizer->Add(mOkCancel[1], wxSizerFlags().Align(wxALIGN_CENTER_VERTICAL).Border(wxALL, 5));
 
-	wxFlexGridSizer* flexSizer = new wxFlexGridSizer(2,2, 5,5);
-	flexSizer->Add(&texts[0], wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
+	flexSizer->Add(texts[1], wxSizerFlags().Align(wxLEFT));
+	flexSizer->Add(mInvoiceWayBill, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
+	flexSizer->AddStretchSpacer();
+
+	flexSizer->Add(texts[2], wxSizerFlags().Align(wxLEFT));
 	flexSizer->Add(mQuantityInControl, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
+	flexSizer->AddStretchSpacer();
 
-	flexSizer->Add(&texts[1], wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
+	flexSizer->Add(texts[3], wxSizerFlags().Align(wxLEFT));
 	flexSizer->Add(mExpiryDate, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
+	flexSizer->Add(mCalenderButton, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
 
+	boxSizer->Add(texts[0], wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
 	boxSizer->Add(flexSizer, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
 	boxSizer->Add(okCancleSizer, wxSizerFlags().Expand().Border(wxALL, 5));
 
 	topSizer->Add(boxSizer, wxSizerFlags().Expand().Border(wxALL, 5));
 	SetSizer(topSizer);
 	topSizer->SetSizeHints(this);
+	Center();
 }
 
 void InventoryDialog::OnOk(wxCommandEvent& evt)
@@ -106,5 +138,38 @@ void InventoryDialog::OnCancel(wxCommandEvent& evt)
 
 void InventoryDialog::OnCalendar(wxCommandEvent& evt)
 {
+	CalendarDialog dialog(this);
+	if (dialog.ShowModal() == wxID_OK)
+	{
+		mExpiryDate->Clear();
+		auto dateTime = dialog.mCalender->GetDate();
+		auto tm = dateTime.GetTm();
+		mExpiryDate->SetValue(fmt::format("{:d}-{:d}-{:d}", tm.year, tm.mon, tm.mday));
+	}
 
 }
+
+BEGIN_EVENT_TABLE(CalendarDialog, wxDialog)
+EVT_CALENDAR(CalendarDialog::ID_CALENDAR, OnCalender)
+END_EVENT_TABLE()
+
+CalendarDialog::CalendarDialog(wxWindow* parent)
+: wxDialog(parent, wxID_ANY, wxEmptyString){
+	mCalender = new wxCalendarCtrl(this, ID_CALENDAR, wxDateTime::Now());
+	wxBoxSizer* boxSizer = new wxBoxSizer(wxVERTICAL);
+	boxSizer->Add(mCalender, wxSizerFlags().Align(wxCENTER).Border(wxALL, 2));
+	SetSizer(boxSizer);
+	boxSizer->SetSizeHints(this);
+}
+
+void CalendarDialog::OnCalender(wxCalendarEvent& evnt)
+{
+	if (IsModal()) EndModal(wxID_OK);
+	else {
+		SetReturnCode(wxID_OK);
+		this->Show(false);
+	}
+}
+
+
+

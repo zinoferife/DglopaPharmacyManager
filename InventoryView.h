@@ -30,7 +30,7 @@ class InventoryView : public wxListCtrl
 public:
 	InventoryView(std::uint64_t ProductID, wxWindow* parent, wxWindowID id, const wxPoint& position = wxDefaultPosition,
 			const wxSize size = wxDefaultSize);
-	
+	virtual ~InventoryView();
 protected:
 	virtual wxListItemAttr* OnGetItemAttr(long item) const override;
 	virtual int OnGetItemImage(long item) const override;
@@ -87,18 +87,20 @@ private:
 
 	//utiliy functions 
 	void AddInOrder(const Inventories::row_t& row);
-
+	void CreateAttributes();
 private:
 	//different attributes
-
+	std::shared_ptr<wxListItemAttr> mJustAdded;
 
 	//different images
+
+
 	std::int32_t mSortColumn;
 	std::uint64_t mProductId;
+	std::bitset<Inventories::column_count - 2> mSortColOrder;
 	Inventories mProductInventoryData;
 	std::unordered_map<std::uint64_t, std::shared_ptr<wxListItemAttr>> mAttributesTable{};
 	std::unordered_map<std::uint64_t, int> mImageTable{};
 	std::unordered_set<std::uint64_t> mCheckedTable{};
-	std::array<bool, Inventories::column_count - 2> mSortColOrder;
 };
 

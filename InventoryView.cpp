@@ -8,12 +8,20 @@ InventoryView::InventoryView(std::uint64_t ProductID, wxWindow* parent, wxWindow
 			return id == mProductId;
 		}
 	);
-	mProductInventoryData.quick_sort<Inventories::date_issued>();
+	mProductInventoryData.quick_sort<Inventories::date_issued, nl::order_dec<Inventories::elem_t<Inventories::date_issued>>>();
 	CreateInventoryView();
 	EnableAlternateRowColours();
 	SetupImages();
+	CreateAttributes();
 	SetItemCount(mProductInventoryData.size());
-	for (auto& b : mSortColOrder) {b = false;}
+	mSortColOrder.reset();
+
+	InventoryInstance::instance().sink().add_listener<InventoryView, &InventoryView::OnNotification>(this);
+}
+
+InventoryView::~InventoryView()
+{
+	InventoryInstance::instance().sink().remove_listener<InventoryView, &InventoryView::OnNotification>(this);
 }
 
 void InventoryView::OnColumnHeaderClick(wxListEvent& evt)
@@ -54,17 +62,26 @@ void InventoryView::OnAddInventory(wxCommandEvent& evt)
 		wxWindowID RetCode = dialog.ShowModal();
 		if (RetCode == wxID_OK) {
 			nl::row_value<Inventories::id>(new_row) = 10; //find a way to generate this 
+			nl::row_value<Inventories::product_id>(new_row) = mProductId;
 			nl::row_value<Inventories::date_issued>(new_row) = nl::clock::now();
-			
+			nl::row_value<Inventories::quantity_out>(new_row) = 0;
 			CalculateBalance(new_row);
+			nl::row_value<Inventories::user_issued>(new_row) = 200345;
+			nl::row_value<Inventories::user_checked>(new_row) = 200345;
+
+			InventoryInstance::instance().add(new_row);
+			InventoryInstance::instance().notify(nl::notifications::add, InventoryInstance::instance().size() - 1);
+			break;
 		}
 		else if(RetCode == wxID_CANCEL){
-			//date not correct
+			//canceled
 			break;
 		}
 		else{
-			//improper date
-			continue;
+			//improper entry
+			if(wxMessageBox("Improper entry, try again? ", "Inventory entry", wxICON_ERROR | wxYES_NO) == wxYES) continue;
+			break;
+
 		}
 	}
 }
@@ -84,6 +101,10 @@ void InventoryView::CreateInventoryView()
 void InventoryView::CalculateBalance(Inventories::row_t& row)
 {
 	auto [min, max] = mProductInventoryData.min_max_on<Inventories::date_issued>();
+	if (max == mProductInventoryData.end()){
+		nl::row_value<Inventories::balance>(row) = nl::row_value<Inventories::quantity_in>(row);
+		return;
+	}
 	nl::row_value<Inventories::balance>(row) = nl::row_value<Inventories::balance>(*max) + nl::row_value<Inventories::quantity_in>(row);
 }
 
@@ -99,10 +120,7 @@ void InventoryView::OnNotification(nl::notifications notif, const Inventories::t
 		auto& row_ = table[row];
 		if (mProductId == nl::row_value<Inventories::product_id>(row_))
 		{
-			//add in order if we have a sorting column
-			if (mSortColumn != -1){
-
-			}
+			AddInOrder(row_);
 		}
 	}
 
@@ -110,6 +128,26 @@ void InventoryView::OnNotification(nl::notifications notif, const Inventories::t
 
 void InventoryView::AddInOrder(const Inventories::row_t& row)
 {
+	if (nl::row_value<Inventories::balance>(row) > 0)
+		AddImage(nl::row_value<Inventories::id>(row), 1);
+	else 
+		AddImage(nl::row_value<Inventories::id>(row), 0);
+
+	size_t date_issued = Inventories::date_issued - 2;
+	AddAttribute(nl::row_value<Inventories::id>(row), mJustAdded);
+	mProductInventoryData.add(row);
+	mSortColOrder.set(date_issued, false);
+	mProductInventoryData.quick_sort<false>(Inventories::date_issued);
+	Freeze();
+	SetItemCount(mProductInventoryData.size());
+	Thaw();
+	Refresh();
+}
+
+void InventoryView::CreateAttributes()
+{
+	mJustAdded = std::make_shared<wxListItemAttr>();
+	mJustAdded->SetBackgroundColour(wxColour(0, 255, 127));
 }
 
 void InventoryView::AddAttribute(std::vector<std::uint64_t>&& ids, std::shared_ptr<wxListItemAttr> attr)
@@ -248,6 +286,7 @@ void InventoryView::ResetProductInventoryList(std::uint64_t productID)
 	mImageTable.clear();
 	mCheckedTable.clear();
 	mAttributesTable.clear();
+	mSortColOrder.reset();
 
 	mProductId = productID;
 	(typename Inventories::relation_t&)mProductInventoryData = InventoryInstance::instance().where<Inventories::product_id>(
@@ -255,6 +294,7 @@ void InventoryView::ResetProductInventoryList(std::uint64_t productID)
 			return id == mProductId;
 		}
 	);
+	mProductInventoryData.quick_sort<Inventories::date_issued, nl::order_dec<Inventories::elem_t<Inventories::date_issued>>>();
 	SetupImages();
 	SetItemCount(mProductInventoryData.size());
 }
