@@ -4,7 +4,7 @@
 
 #include "Instances.h"
 #include <fmt/format.h>
-
+#include <spdlog/spdlog.h>
 
 #include <unordered_map>
 
@@ -30,11 +30,23 @@ class DataModel : public wxDataViewModel
 public:
 	DataModel(Data& instance)
 	: mData(instance), mPastLastAdded(-1){
-		mData.sink().add_listener<DataModel, &DataModel::Notifications>(this);
+		mData.sink<nl::notifications::add>().add_listener<DataModel, &DataModel::OnDataAdded>(this);
+		mData.sink<nl::notifications::add_multiple>().add_listener<DataModel, &DataModel::OnDataAddedMultiple>(this);
+		mData.sink<nl::notifications::load>().add_listener<DataModel, &DataModel::OnDataAddedMultiple>(this);
+		mData.sink<nl::notifications::update>().add_listener<DataModel, &DataModel::OnDataUpdated>(this);
+		mData.sink<nl::notifications::remove>().add_listener<DataModel, & DataModel::OnDeleted>(this);
+		mData.sink<nl::notifications::remove_multiple>().add_listener<DataModel, & DataModel::OnMultipleDeleted>(this);
+		mData.sink<nl::notifications::clear>().add_listener<DataModel, & DataModel::OnClear>(this);
 	}
 	virtual ~DataModel() 
 	{
-		mData.sink().remove_listener<DataModel, & DataModel::Notifications>(this);
+		mData.sink<nl::notifications::add>().remove_listener<DataModel, & DataModel::OnDataAdded>(this);
+		mData.sink<nl::notifications::add_multiple>().remove_listener<DataModel, &DataModel::OnDataAddedMultiple>(this);
+		mData.sink<nl::notifications::load>().remove_listener<DataModel, &DataModel::OnDataAddedMultiple>(this);
+		mData.sink<nl::notifications::update>().remove_listener<DataModel, &DataModel::OnDataUpdated>(this);
+		mData.sink<nl::notifications::remove>().remove_listener<DataModel, &DataModel::OnDeleted>(this);
+		mData.sink<nl::notifications::remove_multiple>().remove_listener<DataModel, &DataModel::OnMultipleDeleted>(this);
+		mData.sink<nl::notifications::clear>().remove_listener<DataModel, &DataModel::OnClear>(this);
 	}
 	virtual bool HasContainerColumns(const wxDataViewItem& item) const
 	{
@@ -50,7 +62,7 @@ public:
 		if (column > GetColumnCount()) return 0;
 		auto indexIter = mIndexMap.find(item1);
 		auto indexIter2 = mIndexMap.find(item2);
-		if (indexIter != mIndexMap.end() && indexIter != mIndexMap.end())
+		if (indexIter != mIndexMap.end() && indexIter2 != mIndexMap.end())
 		{
 			typename Data::variant_t variant1;
 			typename Data::variant_t variant2;
@@ -169,75 +181,103 @@ public:
 	}
 
 public:
-	void Notifications(nl::notifications notif, const typename Data::table_t& table, const typename Data::notification_data& data)
+	
+	void OnDataAdded(const typename Data::table_t& table, const typename Data::notification_data& data)
 	{
-		switch (notif)
-		{
-		case nl::notifications::add:
-		{
-			//DataViewItem starts from one, 0 is invalid so pair(id*:0x00...1, index:0)
-			auto [iter, inserted] = mIndexMap.insert({ wxDataViewItem(UIntToPtr(mData.size())), mData.size()-1 });
-			if (inserted) {
-				ItemAdded(wxDataViewItem(0), iter->first);
-				mPastLastAdded = mData.size();
-			}
-		}
-		break;
-		case nl::notifications::add_multiple:
-		{
-			//assumes that the rows is added at the back of the table, maybe using relation::append_relation
-			//undefined(lol) if not appened at the back 
-			size_t row_added = data.count_of_added;
-			if (row_added > 0)
-			{
-				if (!mIndexMap.empty() || mPastLastAdded != -1)
-				{
-					wxDataViewItemArray DataViewArray(row_added);
-					for (size_t i = 0; i < row_added; i++){
-						size_t index = i + mPastLastAdded;
-						auto [iter, inserted] = mIndexMap.insert(std::make_pair(wxDataViewItem(UIntToPtr(index + 1)), index));
-						if (inserted){
-							DataViewArray[i] = iter->first;
-						}
-					}
-					if (!DataViewArray.empty()){
-						ItemsAdded(wxDataViewItem(0), DataViewArray);
-					}
-					//(mPastLastAdded + size) is the new index of the past last element added
-					mPastLastAdded += row_added;
-				}
-				else
-				{
-					wxDataViewItemArray DataViewArray(row_added);
-					for (size_t i = 0; i < row_added; i++) {
-						size_t index = i;
-						auto [iter, inserted] = mIndexMap.insert(std::make_pair(wxDataViewItem(UIntToPtr(index + 1)), index));
-						if (inserted) {
-							DataViewArray[i] = iter->first;
-						}
-					}
-					if (!DataViewArray.empty()) {
-						ItemsAdded(wxDataViewItem(0), DataViewArray);
-					}
-					//(mPastLastAdded + size) is the new index of the past last element added
-					mPastLastAdded = row_added;
-				}
-
-			}
-		}
-		break;
-		case nl::notifications::update:
-		{
-			size_t row_added = mData.get_index(data.row_iterator);
-			auto iter = mIndexMap.find(wxDataViewItem(UIntToPtr(row_added + 1)));
-			if (iter == mIndexMap.end()) return;
-			ValueChanged(iter->first, data.column);
-		}
-		break;
-
+		auto [iter, inserted] = mIndexMap.insert({ wxDataViewItem(UIntToPtr(mData.size())), mData.size() - 1 });
+		if (inserted) {
+			ItemAdded(wxDataViewItem(0), iter->first);
+			mPastLastAdded = mData.size();
 		}
 	}
-//attributes
+
+	void OnDataAddedMultiple(const typename Data::table_t& table, const typename Data::notification_data& data)
+	{
+		//assumes that the rows is added at the back of the table, maybe using relation::append_relation
+		//undefined(lol) if not appened at the back 
+		size_t row_added = data.count;
+		if (row_added > 0)
+		{
+			if (!mIndexMap.empty() || mPastLastAdded != -1)
+			{
+				wxDataViewItemArray DataViewArray(row_added);
+				for (size_t i = 0; i < row_added; i++) {
+					size_t index = i + mPastLastAdded;
+					auto [iter, inserted] = mIndexMap.insert(std::make_pair(wxDataViewItem(UIntToPtr(index + 1)), index));
+					if (inserted) {
+						DataViewArray[i] = iter->first;
+					}
+				}
+				if (!DataViewArray.empty()) {
+					ItemsAdded(wxDataViewItem(0), DataViewArray);
+				}
+				//(mPastLastAdded + size) is the new index of the past last element added
+				mPastLastAdded += row_added;
+			}
+			else
+			{
+				wxDataViewItemArray DataViewArray(row_added);
+				for (size_t i = 0; i < row_added; i++) {
+					size_t index = i;
+					auto [iter, inserted] = mIndexMap.insert(std::make_pair(wxDataViewItem(UIntToPtr(index + 1)), index));
+					if (inserted) {
+						DataViewArray[i] = iter->first;
+					}
+				}
+				if (!DataViewArray.empty()) {
+					ItemsAdded(wxDataViewItem(0), DataViewArray);
+				}
+				//(mPastLastAdded + size) is the new index of the past last element added
+				mPastLastAdded = row_added;
+			}
+		}
+	}
+
+	void OnDataUpdated(const typename Data::table_t& table, const typename Data::notification_data& data)
+	{
+		size_t row_added = mData.get_index(data.row_iterator);
+		auto iter = mIndexMap.find(wxDataViewItem(UIntToPtr(row_added + 1)));
+		if (iter == mIndexMap.end()) return;
+		ValueChanged(iter->first, data.column);
+	}
+
+	void OnClear(const typename Data::table_t& table, const typename Data::notification_data& data)
+	{
+		wxDataViewItemArray DataArray(mIndexMap.size());
+		std::transform(mIndexMap.begin(), mIndexMap.end(), DataArray.begin(),
+			[&](const std::pair<const wxDataViewItem, size_t>& index) -> wxDataViewItem {
+			return index.first;
+		});
+		ItemsDeleted(wxDataViewItem(0), DataArray);
+		mIndexMap.clear();
+		mPastLastAdded = -1;
+	}
+
+	void OnDeleted(const typename Data::table_t& table, const typename Data::notification_data& data)
+	{
+		if (!mIndexMap.empty() || mPastLastAdded > 0)
+		{
+			//del_row is gonna swap the data in the rows just remove the last element
+			ItemDeleted(wxDataViewItem(0), wxDataViewItem(wxUIntToPtr(mPastLastAdded)));
+			auto it = mIndexMap.find(wxDataViewItem(wxUIntToPtr(mPastLastAdded)));
+			mIndexMap.erase(it);
+			mPastLastAdded--;
+		}
+	}
+
+	void OnMultipleDeleted(const typename Data::table_t& table, const typename Data::notification_data& data)
+	{
+		if (!mIndexMap.empty() || mPastLastAdded > 0)
+		{
+			wxDataViewItemArray DataItemArray(data.count);
+			std::generate(DataItemArray.begin(), DataItemArray.end(), [&]() {
+				return wxDataViewItem(wxUIntToPtr(mPastLastAdded--));
+			});
+			ItemsDeleted(wxDataViewItem(0), DataItemArray);
+		}
+	}
+
+//visual attributes
 public:
 	void AddAttribute(std::shared_ptr<wxDataViewItemAttr> attr, const std::vector<id_t>&& ids)
 	{
@@ -270,6 +310,20 @@ public:
 	void RemoveAttribute(id_t id)
 	{
 		mAttributeTable.erase(id);
+	}
+
+
+	void ReloadIndices(const std::vector<size_t>&& indices)
+	{
+		if (indices.empty()) return;
+		for (auto&& i : indices){
+			auto [iter, inserted] = mIndexMap.insert({ wxDataViewItem(wxUIntToPtr(i + 1)), i });
+			if (inserted) {
+				ItemAdded(wxDataViewItem(0), iter->first);
+				//this might not be correct
+				mPastLastAdded = i + 1;
+			}
+		}
 	}
 
 

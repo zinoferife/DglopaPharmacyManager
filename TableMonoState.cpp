@@ -67,8 +67,8 @@ void TableMonoState::CreateUsersTable()
 	UsersInstance::instance().as<Users::id>("ID");
 	UsersInstance::instance().as<Users::surname>("Last name");
 	UsersInstance::instance().as<Users::name>("Name");
-	UsersInstance::instance().as<Users::name>("Phone number");
-
+	UsersInstance::instance().as<Users::phone_number>("Phone number");
+	UsersInstance::instance().as<Users::username>("Username");
 }
 
 void TableMonoState::CreatePrescriptionsTable()

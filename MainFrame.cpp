@@ -7,6 +7,8 @@ EVT_CLOSE(MainFrame::OnClose)
 EVT_ERASE_BACKGROUND(MainFrame::onEraseBackground)
 EVT_MENU(wxID_ABOUT, MainFrame::OnAbout)
 EVT_MENU(MainFrame::ID_LOG, MainFrame::OnLog)
+EVT_AUITOOLBAR_TOOL_DROPDOWN(MainFrame::ID_TOOL_USER, MainFrame::OnUserBtnDropDown)
+EVT_MENU(MainFrame::ID_USER_LOG_OUT, MainFrame::OnSignOut)
 END_EVENT_TABLE()
 
 
@@ -24,8 +26,14 @@ MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, c
 	mLog->info("Creating database");
 	CreateDatabase();
 
+
+	mLog->info("Creating All tables");
+	TableMonoState::CreateAllTables();
+
 	mLog->info("Creating Main view");
 	CreateDataView();
+
+	CreateTestUser();
 
 	mFrameManager->Update();
 	mLog->info("Main frame constructed sucessfully");
@@ -52,13 +60,14 @@ void MainFrame::CreateLogBook()
 
 void MainFrame::CreateToolBar()
 {
-	wxAuiToolBar* toolbar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW);
-	toolbar->SetToolBitmapSize(wxSize(16, 16));
-	toolbar->AddTool(ID_TOOL_USER, wxT("User- DASHBOARD"), wxArtProvider::GetBitmap("user"));
-	toolbar->AddStretchSpacer();
-	toolbar->AddTool(ID_TOOL_DOWNLOAD_DATA, wxT("Download data"), wxArtProvider::GetBitmap("download"));
-	toolbar->Realize();
-	mFrameManager->AddPane(toolbar, wxAuiPaneInfo().Name(wxT("Tool")).Caption(wxT("Tool bar"))
+	mToolBar.reset(new wxAuiToolBar(this, ID_TOOL, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW));
+	mToolBar->SetToolBitmapSize(wxSize(16, 16));
+	stretchspacer = mToolBar->AddStretchSpacer();
+
+	tool = mToolBar->AddTool(ID_TOOL_USER, wxT("Sign in"), wxArtProvider::GetBitmap("login"));
+	tool->SetHasDropDown(true);
+	mToolBar->Realize();
+	mFrameManager->AddPane(mToolBar.get(), wxAuiPaneInfo().Name(wxT("Tool")).Caption(wxT("Tool bar"))
 		.ToolbarPane().Top().DockFixed().Resizable().Row(1).LeftDockable(false).RightDockable(false).Floatable(false).BottomDockable(false));
 }
 
@@ -116,6 +125,7 @@ void MainFrame::CreateDatabase()
 //This should be customisable
 void MainFrame::SetMainFrameArt()
 {
+	SetBackgroundColour(*wxWHITE);
 	wxAuiDockArt* art = mFrameManager->GetArtProvider();
 	art->SetMetric(wxAUI_DOCKART_CAPTION_SIZE, 24);
 	art->SetMetric(wxAUI_DOCKART_GRIPPER_SIZE, 5);
@@ -136,11 +146,29 @@ void MainFrame::CreateDataView()
 	mFrameManager->Update();
 }
 
+void MainFrame::CreateTestUser()
+{
+	nl::uuid id;
+	id.generate();
+	UsersInstance::instance().add(0, "Ferife", "Zino", "09131861793", 10, "zino", id, nl::blob_t{});
+	UsersInstance::instance().add(0, "Ferife", "Othuke", "09131861793", 10, "othuke", id, nl::blob_t{});
+	UsersInstance::instance().add(0, "Ferife", "Enife", "09131861793", 10, "enife", id, nl::blob_t{});
+}
+
 void MainFrame::Settings()
 {
 	wxTheColourDatabase->AddColour("Aqua", wxColour(240, 255, 255));
 	wxTheColourDatabase->AddColour("Navajo_white", wxColour(255, 222, 173));
 	wxTheColourDatabase->AddColour("Tomato", wxColour(255, 99, 71));
+}
+
+wxSize MainFrame::ResizeTool(const std::string& string)
+{
+	std::string x = "X";
+	int w, h, temp;
+	mToolBar->GetTextExtent(x, &temp, &h);
+	mToolBar->GetTextExtent(string, &w, &temp);
+	return wxSize(w, h);
 }
 
 void MainFrame::OnClose(wxCloseEvent& event)
@@ -155,6 +183,80 @@ void MainFrame::OnClose(wxCloseEvent& event)
 void MainFrame::onEraseBackground(wxEraseEvent& evt)
 {
 	evt.Skip();
+}
+
+void MainFrame::OnUserBtnDropDown(wxAuiToolBarEvent& evt)
+{
+	if (!mActiveUser) {
+		mActiveUser.reset(new ActiveUser(UsersInstance::instance()));
+	}
+	if (!mActiveUser->IsSignedIn())
+	{
+		SignInDialog dialog(this, mActiveUser.get());
+		if (dialog.ShowModal() == wxID_OK) {
+			//signed in 
+			mToolBar->Freeze();
+			std::string name = fmt::format("{} {}",
+				nl::row_value<Users::surname>(mActiveUser->GetActiveUser()),
+				nl::row_value<Users::name>(mActiveUser->GetActiveUser()));
+			tool->SetMinSize(ResizeTool(name));
+			tool->SetLabel(name);
+			tool->SetBitmap(wxArtProvider::GetBitmap("user"));
+			mToolBar->SetToolDropDown(tool->GetId(), true);
+			mToolBar->Realize();
+			mToolBar->Thaw();
+			mToolBar->Refresh();
+			mFrameManager->Update();
+
+			//send a sign in event
+			Users::notification_data data;
+			data.row_iterator = UsersInstance::instance()
+				.find_on<Users::username>(nl::row_value<Users::username>(mActiveUser->GetActiveUser()));
+			data.event_type = 1;
+			UsersInstance::instance().notify<nl::notifications::evt>(data);
+		}
+	}
+	else{
+		if (evt.IsDropDownClicked())
+		{
+			wxMenu* menu = new wxMenu;
+			auto profile = menu->Append(ID_USER_PROFILE, wxT("Profile"));
+			auto log_out = menu->Append(ID_USER_LOG_OUT, wxT("Log out"));
+			auto create_acc = menu->Append(ID_USER_CREATE_ACCOUNT, wxT("Create account"));
+
+			profile->SetBitmaps(wxArtProvider::GetBitmap("user"));
+			log_out->SetBitmaps(wxArtProvider::GetBitmap("rss"));
+			create_acc->SetBitmaps(wxArtProvider::GetBitmap("save"));
+
+
+			mToolBar->PopupMenu(menu);
+			return;
+		}
+	}
+}
+
+void MainFrame::OnSignOut(wxCommandEvent& evt)
+{
+	if (wxMessageBox("Are you sure you want to sign out?", "SIGN OUT", wxYES_NO | wxICON_INFORMATION) == wxYES)
+	{
+		mToolBar->Freeze();
+		//tool->SetMinSize(ResizeTool("Sign in"));
+		tool->SetLabel(wxT("Sign in"));
+		tool->SetBitmap(wxArtProvider::GetBitmap("login"));
+		mToolBar->SetToolDropDown(tool->GetId(), true);
+		mToolBar->Realize();
+		mToolBar->Thaw();
+		mToolBar->Refresh();
+		mFrameManager->Update();
+
+		Users::notification_data data;
+		data.row_iterator = UsersInstance::instance()
+			.find_on<Users::username>(nl::row_value<Users::username>(mActiveUser->GetActiveUser()));
+		data.event_type = 0;
+		UsersInstance::instance().notify<nl::notifications::evt>(data);
+
+	}
+
 }
 
 void MainFrame::OnAbout(wxCommandEvent& evt)

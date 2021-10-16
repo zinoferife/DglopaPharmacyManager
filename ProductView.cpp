@@ -8,6 +8,7 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_TOOL(ProductView::ID_BACK, ProductView::OnBack)
 	EVT_TOOL(ProductView::ID_QUICK_SORT_TEST, ProductView::OnQuickSortTest)
 	EVT_SEARCH(ProductView::ID_SEARCH, ProductView::OnSearchProduct)
+	EVT_SEARCH_CANCEL(ProductView::ID_SEARCH, ProductView::OnSearchCleared)
 	EVT_TEXT(ProductView::ID_SEARCH, ProductView::OnSearchProduct)
 	EVT_MENU(ProductView::ID_SEARCH_BY_NAME, ProductView::OnSearchFlag)
 	EVT_MENU(ProductView::ID_SEARCH_BY_CATEGORY, ProductView::OnSearchFlag)
@@ -25,7 +26,7 @@ ProductView::ProductView()
 
 ProductView::~ProductView()
 {
-	UnregisterInventoryNotification();
+	UnregisterNotification();
 	mDataView.release();
 	mInventoryView.release();
 }
@@ -33,7 +34,7 @@ ProductView::~ProductView()
 ProductView::ProductView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize size)
 :wxPanel(parent, id, position, size){
 	mPanelManager = std::make_unique<wxAuiManager>(this);
-	RegisterInventoryNotification();
+	RegisterNotification();
 	CreateItemAttr();
 	SetDefaultArt();
 	CreateToolBar();
@@ -44,15 +45,15 @@ ProductView::ProductView(wxWindow* parent, wxWindowID id, const wxPoint& positio
 
 void ProductView::CreateToolBar()
 {
-	wxAuiToolBar* bar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW);
+	bar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW);
 	bar->SetToolBitmapSize(wxSize(16, 16));
 	bar->AddTool(ID_BACK, wxEmptyString, wxArtProvider::GetBitmap("arrow_back"));
 	bar->AddTool(ID_FORWARD, wxEmptyString, wxArtProvider::GetBitmap("arrow_next"));
 
 	//search bar
-	wxSearchCtrl* search = new wxSearchCtrl(bar, ID_SEARCH, wxEmptyString, wxDefaultPosition, wxSize(300, -1), wxWANTS_CHARS);
-	search->SetDescriptiveText("Search products");
-	search->AutoComplete(new SearchAutoComplete<Products, Products::name>(ProductInstance::instance()));
+	search = new wxSearchCtrl(bar, ID_SEARCH, wxEmptyString, wxDefaultPosition, wxSize(300, -1), wxWANTS_CHARS);
+	search->SetDescriptiveText("Search products by name");
+//	search->AutoComplete(new SearchAutoComplete<Products, Products::name>(ProductInstance::instance()));
 	search->ShowCancelButton(true);
 	wxMenu* menu = new wxMenu;
 	menu->AppendRadioItem(ID_SEARCH_BY_NAME, "Search by name");
@@ -113,26 +114,22 @@ void ProductView::CreateDataView()
 	ProductModel->DecRef();
 	//load test
 	Products::set_default_row(100, "test", 0, 0, "0.00", 9);
-	std::random_device device{};
-	std::mt19937 engine(device());
-	std::uniform_int_distribution<int> dist(0, 100);
-	auto random = std::bind(dist, engine);
 
 	//test data
-	ProductInstance::instance().add_in_order<Products::name>(0, "Paracetamol", random(), random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(random(), "Panadol", random(), random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(random(), "Vitamin C", random(), 0, "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(random(), "Vitamin D", random(), random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(random(), "Vitamin E", random(), random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(random(), "Malaria syrup", random(), random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(1, "Malaria tablet", random(), random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(random(), "Malaria injection", random(), 0, "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(random(),"AntiBacteria", random(), random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(random(), "AntiBacteria drug", random(), random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Paracetamol", gen_random(), gen_random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Panadol", gen_random(), gen_random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Vitamin C", gen_random(), 0, "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Vitamin D", gen_random(), gen_random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Vitamin E", gen_random(), gen_random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Malaria syrup", gen_random(), gen_random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(1, "Malaria tablet", gen_random(), gen_random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Malaria injection", gen_random(), 0, "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(),"AntiBacteria", gen_random(), gen_random(), "now", 2345);
+	ProductInstance::instance().add_in_order<Products::name>(0, "AntiBacteria drug", gen_random(), gen_random(), "now", 2345);
 
 	Products::notification_data data{};
-	data.count_of_added = ProductInstance::instance().size();
-	ProductInstance::instance().notify(nl::notifications::add_multiple, data);	
+	data.count = ProductInstance::instance().size();
+	ProductInstance::instance().notify<nl::notifications::add_multiple>(data);
 	mPanelManager->AddPane(mDataView.get(), wxAuiPaneInfo().Name("DataView").Caption("ProductView").CenterPane());
 }
 
@@ -220,19 +217,45 @@ void ProductView::HideInventoryToolBar()
 
 void ProductView::OnAddProduct(wxCommandEvent& evt)
 {
-	nl::uuid id;
-	id.generate();
-	
-	//std::string out = fmt::format("{:q}", id);
-	spdlog::get("log")->info("{:q}, size = {:d}", id, std::strlen(nl::uuid::to_string(id)));
-	Products::notification_data data{};
-	data.row_iterator = ProductInstance::instance().add_default_in_order<Products::name>();
-	ProductInstance::instance().notify(nl::notifications::add, data);
+	ProductEntryDialog dialog(this);
+	wxWindowID RetCode = dialog.ShowModal();
+	if (RetCode == wxID_OK){
+
+		Products::notification_data data{};
+		ProductDetails::notification_data data_details{};
+		data.row_iterator = ProductInstance::instance().add_in_order<Products::name>(std::move(dialog.product));
+		data_details.row_iterator = ProductDetailsInstance::instance().add(std::move(dialog.productDetail));
+
+		//notify the system on the added item
+		ProductInstance::instance().notify(nl::notifications::add, data);
+		ProductDetailsInstance::instance().notify<nl::notifications::add>(data_details);
+
+		//highlight the just added item
+		size_t index = ProductInstance::instance().get_index(data.row_iterator);
+		index++;
+		mDataView->Select(wxDataViewItem(wxUIntToPtr(index)));
+		mDataView->EnsureVisible(wxDataViewItem(wxUIntToPtr(index)));
+		mDataView->SetFocus();
+	}
 }
 
 void ProductView::OnRemoveProduct(wxCommandEvent& evt)
 {
-	spdlog::get("log")->info("OnRemoveProduct clicked");
+	auto selected = mDataView->GetSelection();
+	if (!selected.IsOk()){
+		wxMessageBox("No product selected to remove", "Remove product", wxOK | wxICON_INFORMATION);
+		return;
+	}
+	int index = mModel->GetDataViewItemIndex(selected);
+	if (index != wxNOT_FOUND){
+		Products::notification_data data;
+		data.row_iterator = ProductInstance::instance().get_iterator(index);
+		if (wxMessageBox(fmt::format("Are you sure you want to remove \"{}\"",
+			nl::row_value<Products::name>(*data.row_iterator)), "Remove product",  wxICON_INFORMATION | wxYES_NO) == wxYES) {
+			ProductInstance::instance().notify(nl::notifications::remove, data);
+			ProductInstance::instance().del_row(data.row_iterator);
+		}
+	}
 }
 
 void ProductView::OnCheckInStock(wxCommandEvent& evt)
@@ -245,6 +268,9 @@ void ProductView::OnCheckInStock(wxCommandEvent& evt)
 	{
 		auto outstockvector = instockIter->second.isolate_column<Products::id>();
 		mModel->AddAttribute(mInStock, std::move(outstockvector));
+	}
+	else{
+		wxMessageBox("No product with a 0 stock count", "Stock check", wxICON_INFORMATION | wxOK);
 	}
 	mDataView->Thaw();
 	mDataView->Refresh();
@@ -273,14 +299,25 @@ void ProductView::OnSearchProduct(wxCommandEvent& evt)
 	}
 }
 
+
+//need to think about this more
+void ProductView::OnSearchCleared(wxCommandEvent& evt)
+{
+	ProductInstance::instance().notify<nl::notifications::clear>({});
+	Products::notification_data data;
+	data.count = ProductInstance::instance().size();
+	ProductInstance::instance().notify<nl::notifications::load>(data);
+}
+
 void ProductView::OnEraseBackground(wxEraseEvent& evt)
 {
 	evt.Skip();
 }
 
+//remove this, 
 void ProductView::OnQuickSortTest(wxCommandEvent& evt)
 {
-	ProductInstance::instance().quick_sort<Products::id>();
+	//ProductInstance::instance().quick_sort<Products::id>();
 }
 
 void ProductView::OnBack(wxCommandEvent& evt)
@@ -320,12 +357,15 @@ void ProductView::OnSearchFlag(wxCommandEvent& evt)
 	{
 	case ID_SEARCH_BY_NAME:
 		mSearchFlags.set(0, true);
+		search->SetDescriptiveText("Search product by name");
 		break;
 	case ID_SEARCH_BY_CATEGORY:
 		mSearchFlags.set(1, true);
+		search->SetDescriptiveText("Search product by category");
 		break;
 	case ID_SEARCH_BY_PRICE:
 		mSearchFlags.set(2, true);
+		search->SetDescriptiveText("Search product by price");
 		break;
 	default:
 		break;
@@ -336,25 +376,18 @@ void ProductView::OnSearchFlag(wxCommandEvent& evt)
 void ProductView::OnSearchByName(const std::string& SearchString)
 {
 	if (SearchString.empty()) return;
-	Products::row_t row;
-	auto it = ProductInstance::instance().binary_find<Products::name>(SearchString);
-	if (it != ProductInstance::instance().end())
-	{
-		mDataView->Freeze();
-		spdlog::get("log")->info("{}", nl::row_value<Products::name>(*it));
-		mModel->AddAttribute(mExpired, nl::row_value<Products::id>(*it));
-		mDataView->Thaw();
-		mDataView->Refresh();
-	}
+	DoSearch(SearchString);
 }
 
 void ProductView::OnSearchByCategory(const std::string& SearchString)
 {
-
+	if (SearchString.empty()) return;
+	
 }
 
 void ProductView::OnSearchByPrice(const std::string& SearchString)
 {
+	if (SearchString.empty()) return;
 
 }
 
@@ -439,51 +472,60 @@ void ProductView::OnColumnHeaderClick(wxDataViewEvent& evt)
 	mDataView->Refresh();
 }
 
-void ProductView::RegisterInventoryNotification()
+void ProductView::DoSearch(const std::string& searchString)
 {
-	InventoryInstance::instance().sink().add_listener<ProductView, & ProductView::OnInventoryAddNotification>(this);
+	Searcher<Products::name, Products> search(ProductInstance::instance());
+	ProductInstance::instance().notify<nl::notifications::clear>({});
+	mModel->ReloadIndices(search.Search(searchString));
 }
 
-void ProductView::UnregisterInventoryNotification()
+void ProductView::RegisterNotification()
 {
-	InventoryInstance::instance().sink().remove_listener<ProductView, &ProductView::OnInventoryAddNotification>(this);
+	InventoryInstance::instance().sink<nl::notifications::add>().add_listener<ProductView, & ProductView::OnInventoryAddNotification>(this);
+	UsersInstance::instance().sink<nl::notifications::evt>().add_listener<ProductView, & ProductView::OnUsersNotification>(this);
 }
 
-void ProductView::OnInventoryAddNotification(nl::notifications notif, const Inventories::table_t& table, const Inventories::notification_data& data)
+void ProductView::UnregisterNotification()
 {
-	switch (notif)
-	{
-	case nl::notifications::add:
-		UpdateProductStockCount(data.row_iterator);
-		break;
-	case nl::notifications::add_multiple:
-		break;
-	case nl::notifications::remove:
-		break;
-	case nl::notifications::remove_multiple:
-		break;
-	default:
-		break;
-	}
+	InventoryInstance::instance().sink<nl::notifications::add>().remove_listener<ProductView, &ProductView::OnInventoryAddNotification>(this);
+	UsersInstance::instance().sink<nl::notifications::evt>().remove_listener<ProductView, & ProductView::OnUsersNotification>(this);
 
 }
 
-void ProductView::UpdateProductStockCount(Inventories::const_iterator row)
+void ProductView::OnInventoryAddNotification(const Inventories::table_t& table, const Inventories::notification_data& data)
 {
-	uint32_t balance = nl::row_value<Inventories::balance>(*row);
-	auto it = ProductInstance::instance().find_on<Products::id>(nl::row_value<Inventories::product_id>(*row));
+	uint32_t balance = nl::row_value<Inventories::balance>(*data.row_iterator);
+	auto it = ProductInstance::instance().find_on<Products::id>(nl::row_value<Inventories::product_id>(*data.row_iterator));
 	if (it != ProductInstance::instance().end())
 	{
 		nl::row_value<Products::stock_count>(*it) = balance;
-		
-		Products::notification_data data{};
-		data.row_iterator = it;
-		data.column = Products::stock_count;
-		ProductInstance::instance().notify(nl::notifications::update, data);
+
+		Products::notification_data data_p{};
+		data_p.row_iterator = it;
+		data_p.column = Products::stock_count;
+		ProductInstance::instance().notify(nl::notifications::update, data_p);
 		mModel->RemoveAttribute(nl::row_value<Products::id>(*it));
 	}
 }
 
+void ProductView::OnUsersNotification(const Users::table_t& table, const Users::notification_data& data)
+{
+	switch (data.event_type)
+	{
+	//sign in 
+	case 1: 
+
+		break;
+	//sign out
+	case 0:
+
+		break;
+	}
+
+}
+
+
+//remove
 int ProductView::gen_random()
 {
 	static std::mt19937 engine(std::random_device{}());

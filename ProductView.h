@@ -13,6 +13,8 @@
 #include "Instances.h"
 #include "SearchAutoComplete.h"
 #include "InventoryView.h"
+#include "ProductEntryDialog.h"
+#include "Searcher.h"
 
 
 #include <nl_uuid.h>
@@ -71,6 +73,7 @@ private:
 	void OnCheckInStock(wxCommandEvent& evt);
 	void OnResetAttributes(wxCommandEvent& evt);
 	void OnSearchProduct(wxCommandEvent& evt);
+	void OnSearchCleared(wxCommandEvent& evt);
 	void OnEraseBackground(wxEraseEvent& evt);
 	void OnQuickSortTest(wxCommandEvent& evt);
 	void OnBack(wxCommandEvent& evt);
@@ -91,10 +94,13 @@ private:
 	void OnColumnHeaderClick(wxDataViewEvent& evt);
 
 
-	void RegisterInventoryNotification();
-	void UnregisterInventoryNotification();
-	void OnInventoryAddNotification(nl::notifications notif, const Inventories::table_t& table, const Inventories::notification_data& data);
-	void UpdateProductStockCount(Inventories::const_iterator row);
+	void DoSearch(const std::string& searchString);
+
+
+	void RegisterNotification();
+	void UnregisterNotification();
+	void OnInventoryAddNotification(const Inventories::table_t& table, const Inventories::notification_data& data);
+	void OnUsersNotification(const Users::table_t& table, const Users::notification_data& data);
 private:
 	//for test 
 	static int gen_random();
@@ -103,11 +109,13 @@ private:
 	std::unique_ptr<wxDataViewCtrl> mDataView;
 	std::unique_ptr<InventoryView> mInventoryView;
 	DataModel<Products>* mModel;
-
+	wxAuiToolBar* bar;
+	wxSearchCtrl* search;
 	//product view item attributes
 	std::shared_ptr<wxDataViewItemAttr> mInStock;
 	std::shared_ptr<wxDataViewItemAttr> mExpired;
 	wxAuiToolBarItem* mInventoryProductName;
+	Products mTempProductTable;
 
 	DECLARE_EVENT_TABLE()
 };

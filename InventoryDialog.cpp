@@ -8,7 +8,7 @@ EVT_BUTTON(InventoryDialog::ID_CALENDAR, InventoryDialog::OnCalendar)
 END_EVENT_TABLE()
 
 InventoryDialog::InventoryDialog(Inventories::row_t& row_, wxWindow* parent)
-: wxDialog(parent, wxID_ANY, "Inventory entry"), row(row_) {
+: wxDialog(parent, wxID_ANY, wxEmptyString), row(row_) {
 	CreateDialog();
 	SizeDialog();
 }
@@ -51,12 +51,15 @@ void InventoryDialog::CreateDialog()
 	texts[1] = new wxStaticText;
 	texts[2] = new wxStaticText;
 	texts[3] = new wxStaticText;
+	texts[4] = new wxStaticText;
 
 	texts[0]->Create(this, wxID_ANY, "ENTER INVENTORY", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 	texts[0]->SetFont(wxFont(10, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD));
+
 	texts[1]->Create(this, wxID_ANY, "Invoice way bill number: ", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 	texts[2]->Create(this, wxID_ANY, "Quantity in: ", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 	texts[3]->Create(this, wxID_ANY, "Expiry date: ", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
+	texts[4]->Create(this, wxID_ANY, "Please enter inventory for product", wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 	
 	mOkCancel[0] = new wxButton;
 	mOkCancel[1] = new wxButton;
@@ -66,10 +69,11 @@ void InventoryDialog::CreateDialog()
 	mCalenderButton = new wxBitmapButton(this, ID_CALENDAR, wxArtProvider::GetBitmap("application"));
 	mCalenderButton->SetBackgroundColour(*wxWHITE);
 
-	mQuantityInControl = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS | wxALIGN_LEFT, 0,
+	mQuantityInControl = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(200, -1), wxSP_ARROW_KEYS | wxALIGN_LEFT, 0,
 		std::numeric_limits<int>::max());
-	mExpiryDate = new wxTextCtrl(this, wxID_ANY);
-	mInvoiceWayBill = new wxTextCtrl(this, wxID_ANY);
+	mExpiryDate = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(200, -1));
+	mExpiryDate->SetHint("YYYY-MM-DD");
+	mInvoiceWayBill = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(200, -1));
 	mInvoiceWayBill->SetValidator(wxTextValidator{ wxFILTER_DIGITS });
 }
 
@@ -97,6 +101,7 @@ void InventoryDialog::SizeDialog()
 	flexSizer->Add(mCalenderButton, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
 
 	boxSizer->Add(texts[0], wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
+	boxSizer->Add(texts[4], wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
 	boxSizer->Add(flexSizer, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
 	boxSizer->Add(okCancleSizer, wxSizerFlags().Expand().Border(wxALL, 5));
 
@@ -154,8 +159,8 @@ EVT_CALENDAR(CalendarDialog::ID_CALENDAR, OnCalender)
 END_EVENT_TABLE()
 
 CalendarDialog::CalendarDialog(wxWindow* parent)
-: wxDialog(parent, wxID_ANY, wxEmptyString){
-	mCalender = new wxCalendarCtrl(this, ID_CALENDAR, wxDateTime::Now());
+: wxDialog(parent, wxID_ANY, wxT("Pick an expiry date")){
+	mCalender = new wxCalendarCtrl(this, ID_CALENDAR, wxDateTime::Now(), wxDefaultPosition, wxDefaultSize, wxNO_BORDER);
 	wxBoxSizer* boxSizer = new wxBoxSizer(wxVERTICAL);
 	boxSizer->Add(mCalender, wxSizerFlags().Align(wxCENTER).Border(wxALL, 2));
 	SetSizer(boxSizer);

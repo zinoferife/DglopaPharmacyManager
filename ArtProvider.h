@@ -20,6 +20,5 @@ protected:
 	virtual wxBitmap CreateBitmap(const wxArtID& id, const wxArtClient& client, const wxSize& size) override;
 private:
 	std::unordered_map<std::string, wxBitmap> mImageStore;
-	std::string mPath;
 };
 

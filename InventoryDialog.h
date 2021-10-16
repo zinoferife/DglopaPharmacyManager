@@ -45,7 +45,7 @@ private:
 	void CreateDialog();
 	void SizeDialog();
 
-	wxStaticText* texts[4];
+	wxStaticText* texts[5];
 	wxSpinCtrl* mQuantityInControl;
 	wxTextCtrl* mExpiryDate;
 	wxTextCtrl* mInvoiceWayBill;

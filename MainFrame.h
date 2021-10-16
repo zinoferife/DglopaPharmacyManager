@@ -14,22 +14,18 @@
 #include <filesystem>
 
 //nl stuff
-#include <Singleton.h>
-#include <Database.h>
-#include <relation.h>
-#include <table.h>
-#include <nl_time.h>
 
 
 #include "LogSink.h"
 #include "Tables.h"
+#include "TableMonoState.h"
 #include "Instances.h"
-#include "DataModel.h"
 #include "MainView.h"
 #include "ArtProvider.h"
+#include "ActiveUser.h"
+#include "SignInDialog.h"
 
 
-constexpr const char* database_file_path = "C:\\Users\\ferif\\source\\repos\\SQLearn\\test2.db";
 using namespace std::literals::string_literals;
 
 
@@ -50,13 +46,18 @@ public:
 		ID_BACK_UP_DATA = wxID_HIGHEST + 200,
 		ID_NEW_PRODUCT,
 		ID_PRODUCT_SEARCH,
-		ID_LOG
+		ID_LOG,
+		ID_USER_LOG_IN,
+		ID_USER_LOG_OUT,
+		ID_USER_PROFILE,
+		ID_USER_CREATE_ACCOUNT
 	};
 
 	enum
 	{
 		ID_TOOL_DOWNLOAD_DATA = wxID_HIGHEST + 400,
-		ID_TOOL_USER
+		ID_TOOL_USER,
+		ID_TOOL
 	};
 
 
@@ -73,13 +74,23 @@ private:
 	void CreateDatabase();
 	void SetMainFrameArt();
 	void CreateDataView();
+	void CreateTestUser();
+
 	void Settings();
+
+	wxSize ResizeTool(const std::string& string);
+
 private:
 	std::shared_ptr<wxTextCtrl> mLogBook;
 	std::unique_ptr<wxAuiManager> mFrameManager;
 	std::unique_ptr<MainView> mViewCtrl;
 	std::shared_ptr<spdlog::logger> mLog;
+	std::unique_ptr<ActiveUser> mActiveUser;
+	std::unique_ptr<wxAuiToolBar> mToolBar;
 
+	//holders
+	wxAuiToolBarItem* tool;
+	wxAuiToolBarItem* stretchspacer;
 
 //main frame event handlers
 private:
@@ -87,6 +98,10 @@ private:
 	void OnLog(wxCommandEvent& evt);
 	void OnClose(wxCloseEvent& evt);
 	void onEraseBackground(wxEraseEvent& evt);
+
+	//tool bar events
+	void OnUserBtnDropDown(wxAuiToolBarEvent& evt);
+	void OnSignOut(wxCommandEvent& evt);
 
 private:
 	

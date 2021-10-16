@@ -16,12 +16,12 @@ InventoryView::InventoryView(std::uint64_t ProductID, wxWindow* parent, wxWindow
 	SetItemCount(mProductInventoryData.size());
 	mSortColOrder.reset();
 
-	InventoryInstance::instance().sink().add_listener<InventoryView, &InventoryView::OnNotification>(this);
+	InventoryInstance::instance().sink<nl::notifications::add>().add_listener<InventoryView, &InventoryView::OnAddNotification>(this);
 }
 
 InventoryView::~InventoryView()
 {
-	InventoryInstance::instance().sink().remove_listener<InventoryView, &InventoryView::OnNotification>(this);
+	InventoryInstance::instance().sink<nl::notifications::add>().remove_listener<InventoryView, &InventoryView::OnAddNotification>(this);
 }
 
 void InventoryView::OnColumnHeaderClick(wxListEvent& evt)
@@ -109,17 +109,12 @@ void InventoryView::CalculateBalance(Inventories::row_t& row)
 	nl::row_value<Inventories::balance>(row) = nl::row_value<Inventories::balance>(*max) + nl::row_value<Inventories::quantity_in>(row);
 }
 
-void InventoryView::OnNotification(nl::notifications notif, const Inventories::table_t& table, const Inventories::notification_data& data)
+void InventoryView::OnAddNotification(const Inventories::table_t& table, const Inventories::notification_data& data)
 {
-	switch (notif)
+	if (mProductId == nl::row_value<Inventories::product_id>(*(data.row_iterator)))
 	{
-	case nl::notifications::add:
-		if (mProductId == nl::row_value<Inventories::product_id>(*(data.row_iterator)))
-		{
-			AddInOrder(*(data.row_iterator));
-		}
+		AddInOrder(*(data.row_iterator));
 	}
-
 }
 
 void InventoryView::AddInOrder(const Inventories::row_t& row)

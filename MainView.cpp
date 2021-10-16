@@ -20,10 +20,10 @@ EVT_AUINOTEBOOK_TAB_RIGHT_UP(MainView::VIEW_BOOK, MainView::OnBookTabRClick)
 END_EVENT_TABLE()
 
 MainView::MainView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size)
-: wxPanel(parent, id, position, size), mMainViewColour(wxColour(240, 255, 255)){
+	: wxPanel(parent, id, position, size), mMainViewColour(wxColour(240, 255, 255)), mSignedIn{false}{
 	SetDefaultArt();
 	SetUpFonts();
-	TableMonoState::CreateAllTables();
+	RegisterNotifications();
 	CreateImageLists();
 	CreatePageBook();
 	CreateTreeCtrl();
@@ -40,36 +40,37 @@ MainView::MainView(wxWindow* parent, wxWindowID id, const wxPoint& position, con
 MainView::~MainView()
 {
 	//allow the window hierarchy destory the objects
+	UnregisterNotifications();
 	mViewBook.release();
 	mTreeCtrl.release();
-	mSView.release();
-	mPView.release();
+	mSView.second.release();
+	mPView.second.release();
 }
 
 void MainView::CreateProductView()
 {
-	mPView = std::make_unique<ProductView>(this, wxID_ANY);
-	mPView->Hide();
+	mPView.second = std::make_unique<ProductView>(this, wxID_ANY);
+	mPView.second->Hide();
 }
 
 void MainView::CreateSalesView()
 {
-	mSView = std::make_unique<wxDataViewCtrl>(mViewBook.get(), SALES_VIEW, wxDefaultPosition, wxDefaultSize, wxDV_ROW_LINES | wxNO_BORDER);
+	mSView.second = std::make_unique<wxDataViewCtrl>(mViewBook.get(), SALES_VIEW, wxDefaultPosition, wxDefaultSize, wxDV_ROW_LINES | wxNO_BORDER);
 	wxDataViewModel* SalesModel = new DataModel<Sales>(SalesInstance::instance());
-	mSView->AssociateModel(SalesModel);
+	mSView.second->AssociateModel(SalesModel);
 	SalesModel->DecRef();
 	for (size_t i = 0; i < Sales::column_count; i++)
 	{
-		mSView->AppendTextColumn(SalesInstance::instance().get_name(i), i);
+		mSView.second->AppendTextColumn(SalesInstance::instance().get_name(i), i);
 	}
 	for (size_t i = 0; i < 30; i++)
 	{
 		SalesInstance::instance().add(i, i, i * 2, (i * 10 % 5), 100, nl::clock::now(), "0.08");
 	}
 	Sales::notification_data data{};
-	data.count_of_added = 30;
+	data.count = 30;
 	SalesInstance::instance().notify(nl::notifications::add_multiple, data);
-	mSView->Hide();
+	mSView.second->Hide();
 }
 
 void MainView::CreatePageBook()
@@ -100,7 +101,8 @@ void MainView::CreateTreeCtrl()
 
 
 	auto transactionsID= AddToTree(mRootID, "Transactions", folder, folder_open);
-	AddToViewMap(mSView.get(), AddToTree(transactionsID, "Sales", file));
+	mSView.first = AddToTree(transactionsID, "Sales", file);
+	AddToViewMap(mSView.second.get(), mSView.first);
 	auto invoiceId =    AddToTree(transactionsID, "Invoice", file);
 	auto orderId =      AddToTree(transactionsID, "Order", file);
 
@@ -109,7 +111,8 @@ void MainView::CreateTreeCtrl()
 	auto prescriptionsId = AddToTree(pharmacyID, "Prescriptions", file);
 
 	auto inventoryID = AddToTree(mRootID, "Inventories", folder, folder_open);
-	AddToViewMap(mPView.get(), AddToTree(inventoryID, "Products", file));
+	mPView.first = AddToTree(inventoryID, "Products", file);
+	AddToViewMap(mPView.second.get(),  mPView.first);
 	
 	auto miscID = AddToTree(mRootID, "Micellenous", folder, folder_open );
 
@@ -169,6 +172,8 @@ bool MainView::AddToViewMap(wxWindow* win, wxTreeItemId item)
 	return inserted;
 }
 
+
+
 void MainView::OnTreeItemSelectionChanging(wxTreeEvent& evt)
 {
 	
@@ -181,23 +186,28 @@ void MainView::OnTreeItemSelectionChanged(wxTreeEvent& evt)
 
 void MainView::OnTreeItemActivated(wxTreeEvent& evt)
 {
-	auto item = evt.GetItem();
-	if (item.IsOk())
+	if (mSignedIn)
 	{
-		auto winIter = mDataViewsMap.find(item);
-		if (winIter != mDataViewsMap.end()){
-			wxWindow* win = winIter->second;
-			auto pageIndex = mViewBook->GetPageIndex(win);
-			if(pageIndex != wxNOT_FOUND){
-				if (!win->IsShown()) win->Show();
-				mViewBook->SetSelection(pageIndex);
-			}
-			else{
-				if (win != nullptr){
-					mViewBook->AddPage(win, mTreeCtrl->GetItemText(item), true, mTreeCtrl->GetItemImage(item));
+		auto item = evt.GetItem();
+		if (item.IsOk())
+		{
+			auto winIter = mDataViewsMap.find(item);
+			if (winIter != mDataViewsMap.end()) {
+				wxWindow* win = winIter->second;
+				auto pageIndex = mViewBook->GetPageIndex(win);
+				if (pageIndex != wxNOT_FOUND) {
+					if (!win->IsShown()) win->Show();
+					mViewBook->SetSelection(pageIndex);
+				}
+				else {
+					if (win != nullptr) {
+						mViewBook->AddPage(win, mTreeCtrl->GetItemText(item), true, mTreeCtrl->GetItemImage(item));
+					}
 				}
 			}
 		}
+	}else{
+		wxMessageBox("Please sign in, click the lock icon to sign in", "SIGN IN", wxICON_ERROR | wxOK);
 	}
 }
 
@@ -260,4 +270,52 @@ void MainView::OnBookPageChanged(wxAuiNotebookEvent& evt)
 
 void MainView::OnBookPageChanging(wxAuiNotebookEvent& evt)
 {
+}
+
+void MainView::RegisterNotifications()
+{
+	UsersInstance::instance().sink<nl::notifications::evt>().add_listener<MainView, &MainView::OnUserNotification>(this);
+}
+
+void MainView::UnregisterNotifications()
+{
+	UsersInstance::instance().sink<nl::notifications::evt>().remove_listener<MainView, & MainView::OnUserNotification>(this);
+}
+
+void MainView::OnUserNotification(const Users::table_t& table, const Users::notification_data& data)
+{
+	switch (data.event_type)
+	{
+	//sign in
+	case 1:
+	{
+		wxWindow* win = mPView.second.get();
+		auto pageIndex = mViewBook->GetPageIndex(win);
+		if (pageIndex != wxNOT_FOUND) {
+			if (!win->IsShown()) win->Show();
+			mViewBook->SetSelection(pageIndex);
+		}
+		else {
+			if (win != nullptr) {
+				mViewBook->AddPage(win, mTreeCtrl->GetItemText(mPView.first), true, mTreeCtrl->GetItemImage(mPView.first));
+			}
+		}
+		mSignedIn = true;
+	}
+	break;
+	//sign out 
+	case 0:
+	{
+		size_t active_page = mViewBook->GetSelection();
+		mViewBook->RemovePage(active_page);
+		size_t page_count = mViewBook->GetPageCount();
+		for (size_t i = 0; i < page_count; i++){
+			mViewBook->RemovePage(i);
+		}
+		mSignedIn = false;
+	}
+	break;
+	default:
+		break;
+	}
 }

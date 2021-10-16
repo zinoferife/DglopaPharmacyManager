@@ -162,6 +162,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ActiveUser.cpp" />
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="ArtProvider.cpp" />
     <ClCompile Include="InventoryDialog.cpp" />
@@ -169,10 +170,13 @@
     <ClCompile Include="LogSink.cpp" />
     <ClCompile Include="MainFrame.cpp" />
     <ClCompile Include="MainView.cpp" />
+    <ClCompile Include="ProductEntryDialog.cpp" />
     <ClCompile Include="ProductView.cpp" />
+    <ClCompile Include="SignInDialog.cpp" />
     <ClCompile Include="TableMonoState.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ActiveUser.h" />
     <ClInclude Include="Application.h" />
     <ClInclude Include="ArtProvider.h" />
     <ClInclude Include="common.h" />
@@ -183,9 +187,11 @@
     <ClInclude Include="LogSink.h" />
     <ClInclude Include="MainFrame.h" />
     <ClInclude Include="MainView.h" />
+    <ClInclude Include="ProductEntryDialog.h" />
     <ClInclude Include="ProductView.h" />
     <ClInclude Include="SearchAutoComplete.h" />
     <ClInclude Include="Searcher.h" />
+    <ClInclude Include="SignInDialog.h" />
     <ClInclude Include="TableMonoState.h" />
     <ClInclude Include="Tables.h" />
   </ItemGroup>

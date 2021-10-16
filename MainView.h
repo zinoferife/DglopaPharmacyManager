@@ -75,7 +75,6 @@ public:
 	wxTreeItemId AddToTree(wxTreeItemId parent, const std::string& name, int imageId = -1,
 		int imageIdSel = -1);
 	bool AddToViewMap(wxWindow* win, wxTreeItemId item);
-
 //tree ctrl events
 private:
 	void OnTreeItemSelectionChanging(wxTreeEvent& evt);
@@ -97,18 +96,23 @@ private:
 	void OnBookPageChanged(wxAuiNotebookEvent& evt);
 	void OnBookPageChanging(wxAuiNotebookEvent& evt);
 
+private:
+	void RegisterNotifications();
+	void UnregisterNotifications();
+
+	void OnUserNotification(const Users::table_t& table, const Users::notification_data& data);
 
 private:
 	//page id, to dataView control
 	
 	std::unique_ptr<wxAuiNotebook> mViewBook{};
 	std::unique_ptr<wxTreeCtrl> mTreeCtrl{};
-	std::unique_ptr<ProductView> mPView{};
-	std::unique_ptr<wxDataViewCtrl> mSView{};
+	std::pair<wxTreeItemId, std::unique_ptr<ProductView>> mPView{};
+	std::pair<wxTreeItemId, std::unique_ptr<wxDataViewCtrl>> mSView{};
 
 	//for remvoing to addiing 
 	std::unordered_map<wxTreeItemId, wxWindow*> mDataViewsMap{};
-
+	bool mSignedIn;
 private:
 	std::array<wxFont,5> mMainViewFonts;
 	std::unique_ptr<wxImageList> mImageList;

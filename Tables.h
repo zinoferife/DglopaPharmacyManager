@@ -56,7 +56,7 @@ class ProductDetails : public nl::vector_table < std::uint64_t, //prouct id
 	std::string, // product descriptions
 	std::string, // product direction for use
 	std::string, // product class
-	std::vector<std::string>> // health conditions 
+	std::string> // health conditions 
 {
 public:
 	BEGIN_COL_NAME("ProductDetails")
@@ -186,8 +186,9 @@ class Users : public nl::vector_table<std::uint64_t, //user_id
 	std::string, // name
 	std::string, // phone number
 	std::uint32_t, //User level
+	std::string,
 	nl::uuid, //user_uuid
-	std::uint64_t> // password hash
+	nl::blob_t> // password hash
 {
 public:
 	BEGIN_COL_NAME("users")
@@ -207,6 +208,7 @@ public:
 		name,
 		phone_number,
 		user_level,
+		username,
 		uuid,
 		password_hash
 	};

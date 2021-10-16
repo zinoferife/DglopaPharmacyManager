@@ -4,26 +4,25 @@
 #include <type_traits>
 
 
-
-template<typename Data, size_t SearchColumn>
+template<size_t SearchColumn, typename Data>
 class Searcher
 {
 public:
 	Searcher(Data& reference)
 		:mDataRef(reference)
-	{
-	
-	}
+	{}
 
 	template<std::enable_if_t < std::is_same_v<typename Data::template elem_t<SearchColumn>, std::string> ,int > = 0>
-	auto Search(const std::string& search_for)
+	inline auto Search(const std::string& search_for) const
 	{
-			
+		if constexpr (std::is_convertible_v<typename Data::template elem_t<SearchColumn>, std::string>)
+		{
+			return mDataRef.like_index<SearchColumn>(ConstructRegex(search_for));
+		}
+		return std::vector<size_t>{};
 	}
 
-
-
-	std::regex ConstructRegex(const std::string& text)
+	std::regex ConstructRegex(const std::string& text) const
 	{
 		std::string temp;
 		for (auto& c : text)
@@ -35,5 +34,5 @@ public:
 	}
 
 private:
-	Data& mDataRef
+	Data& mDataRef;
 };

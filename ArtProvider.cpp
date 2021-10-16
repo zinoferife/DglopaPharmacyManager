@@ -1,6 +1,5 @@
 #include "common.h"
 #include "ArtProvider.h"
-#include "Application.h"
 
 ArtProvider::ArtProvider()
 {
