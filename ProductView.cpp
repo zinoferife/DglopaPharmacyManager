@@ -39,6 +39,8 @@ ProductView::ProductView(wxWindow* parent, wxWindowID id, const wxPoint& positio
 	SetDefaultArt();
 	CreateToolBar();
 	CreateInventoryList();
+	//should be in mainFrame
+	CreateDatabaseMgr();
 	CreateDataView();
 	mPanelManager->Update();
 }
@@ -53,7 +55,6 @@ void ProductView::CreateToolBar()
 	//search bar
 	search = new wxSearchCtrl(bar, ID_SEARCH, wxEmptyString, wxDefaultPosition, wxSize(300, -1), wxWANTS_CHARS);
 	search->SetDescriptiveText("Search products by name");
-//	search->AutoComplete(new SearchAutoComplete<Products, Products::name>(ProductInstance::instance()));
 	search->ShowCancelButton(true);
 	wxMenu* menu = new wxMenu;
 	menu->AppendRadioItem(ID_SEARCH_BY_NAME, "Search by name");
@@ -115,21 +116,7 @@ void ProductView::CreateDataView()
 	//load test
 	Products::set_default_row(100, "test", 0, 0, "0.00", 9);
 
-	//test data
-	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Paracetamol", gen_random(), gen_random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Panadol", gen_random(), gen_random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Vitamin C", gen_random(), 0, "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Vitamin D", gen_random(), gen_random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Vitamin E", gen_random(), gen_random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Malaria syrup", gen_random(), gen_random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(1, "Malaria tablet", gen_random(), gen_random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(), "Malaria injection", gen_random(), 0, "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(GenRandomId<std::uint64_t>(),"AntiBacteria", gen_random(), gen_random(), "now", 2345);
-	ProductInstance::instance().add_in_order<Products::name>(0, "AntiBacteria drug", gen_random(), gen_random(), "now", 2345);
-
-	Products::notification_data data{};
-	data.count = ProductInstance::instance().size();
-	ProductInstance::instance().notify<nl::notifications::add_multiple>(data);
+	mDatabaseMgr->LoadTable();
 	mPanelManager->AddPane(mDataView.get(), wxAuiPaneInfo().Name("DataView").Caption("ProductView").CenterPane());
 }
 
@@ -144,30 +131,13 @@ void ProductView::CreateItemAttr()
 void ProductView::CreateInventoryList()
 {
 	//this is for testing 
-	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(),gen_random(), gen_random(), gen_random(), 0, gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 0, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), 0, gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
-	InventoryInstance::instance().add(gen_random(), 1, nl::clock::now(), nl::clock::now(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random(), gen_random());
+	
+}
 
-	//CreateInventory(0);
+void ProductView::CreateDatabaseMgr()
+{
+	mDatabaseMgr.reset(new DatabaseManger<Products>(ProductInstance::instance(), DatabaseInstance::instance()));
+	mDatabaseMgr->CreateTable();
 }
 
 void ProductView::CreateInventory(std::uint64_t product_id)
@@ -179,6 +149,8 @@ void ProductView::CreateInventory(std::uint64_t product_id)
 	CreateInentoryToolBar();
 	mInventoryView->AssignImageList(imageList, wxIMAGE_LIST_SMALL);
 	mPanelManager->AddPane(mInventoryView.get(), wxAuiPaneInfo().Name("Inventory").Caption("InventoryView").CenterPane().Hide());
+	mInventoryView->GetProductInventory().sink<nl::notifications::add>()
+		.add_listener<ProductView, & ProductView::OnInventoryAddNotification>(this);
 }
 
 void ProductView::SetDefaultArt()
@@ -382,7 +354,21 @@ void ProductView::OnSearchByName(const std::string& SearchString)
 void ProductView::OnSearchByCategory(const std::string& SearchString)
 {
 	if (SearchString.empty()) return;
-	
+	Searcher<Categories::name, Categories> categorySearcher(CategoriesInstance::instance());
+	auto CatIndices = categorySearcher.Search(SearchString);
+	if (CatIndices.empty()) return;
+
+	ProductInstance::instance().notify<nl::notifications::clear>({});
+	auto ProductIndices = ProductInstance::instance()
+		.where_index<Products::category_id>([&](typename Categories::elem_t<Categories::id>& id) {
+		for (auto& i : CatIndices) {
+			if (id == nl::row_value<Categories::id>(CategoriesInstance::instance()[i])) {
+				return true;
+			}
+		}
+		return false;
+	});
+	mModel->ReloadIndices(std::move(ProductIndices));
 }
 
 void ProductView::OnSearchByPrice(const std::string& SearchString)
@@ -481,15 +467,12 @@ void ProductView::DoSearch(const std::string& searchString)
 
 void ProductView::RegisterNotification()
 {
-	InventoryInstance::instance().sink<nl::notifications::add>().add_listener<ProductView, & ProductView::OnInventoryAddNotification>(this);
 	UsersInstance::instance().sink<nl::notifications::evt>().add_listener<ProductView, & ProductView::OnUsersNotification>(this);
 }
 
 void ProductView::UnregisterNotification()
 {
-	InventoryInstance::instance().sink<nl::notifications::add>().remove_listener<ProductView, &ProductView::OnInventoryAddNotification>(this);
 	UsersInstance::instance().sink<nl::notifications::evt>().remove_listener<ProductView, & ProductView::OnUsersNotification>(this);
-
 }
 
 void ProductView::OnInventoryAddNotification(const Inventories::table_t& table, const Inventories::notification_data& data)
@@ -505,6 +488,8 @@ void ProductView::OnInventoryAddNotification(const Inventories::table_t& table, 
 		data_p.column = Products::stock_count;
 		ProductInstance::instance().notify(nl::notifications::update, data_p);
 		mModel->RemoveAttribute(nl::row_value<Products::id>(*it));
+		mDatabaseMgr->UpdateTable(it, ProductInstance::instance().get<Products::stock_count>(it),
+			Products::get_col_name<Products::stock_count>());
 	}
 }
 

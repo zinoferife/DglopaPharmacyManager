@@ -3,11 +3,16 @@
 
 InventoryView::InventoryView(std::uint64_t ProductID, wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize size)
 	: wxListCtrl(parent, id, position, size, wxLC_REPORT | wxLC_VIRTUAL | wxLC_HRULES | wxNO_BORDER), mProductId(ProductID), mSortColumn{-1}{
-	(typename Inventories::relation_t&)mProductInventoryData = InventoryInstance::instance().where<Inventories::product_id>(
-		[&](std::uint64_t id) {
-			return id == mProductId;
-		}
-	);
+
+	mDatabaseMgr = std::make_unique<DatabaseManger<Inventories>>(mProductInventoryData, DatabaseInstance::instance());
+	nl::query q;
+	q.select("*").from(Inventories::table_name).where(fmt::format("{} = \'{:d}\'", 
+		Inventories::get_col_name<Inventories::product_id>(), ProductID));
+	spdlog::get("log")->info("{}", q.get_query());
+	mDatabaseMgr->AddQuery("load", q);
+	mDatabaseMgr->CreateTable();
+	mDatabaseMgr->LoadTable();
+
 	mProductInventoryData.quick_sort<Inventories::date_issued, nl::order_dec<Inventories::elem_t<Inventories::date_issued>>>();
 	CreateInventoryView();
 	EnableAlternateRowColours();
@@ -15,13 +20,13 @@ InventoryView::InventoryView(std::uint64_t ProductID, wxWindow* parent, wxWindow
 	CreateAttributes();
 	SetItemCount(mProductInventoryData.size());
 	mSortColOrder.reset();
-
-	InventoryInstance::instance().sink<nl::notifications::add>().add_listener<InventoryView, &InventoryView::OnAddNotification>(this);
+	//set mProductINventoryData notificatiions
+	mProductInventoryData.sink<nl::notifications::add>().add_listener<InventoryView, & InventoryView::OnAddNotification>(this);
 }
 
 InventoryView::~InventoryView()
 {
-	InventoryInstance::instance().sink<nl::notifications::add>().remove_listener<InventoryView, &InventoryView::OnAddNotification>(this);
+	mProductInventoryData.sink<nl::notifications::add>().remove_listener<InventoryView, &InventoryView::OnAddNotification>(this);
 }
 
 void InventoryView::OnColumnHeaderClick(wxListEvent& evt)
@@ -61,7 +66,7 @@ void InventoryView::OnAddInventory(wxCommandEvent& evt)
 		InventoryDialog dialog(new_row, this);
 		wxWindowID RetCode = dialog.ShowModal();
 		if (RetCode == wxID_OK) {
-			nl::row_value<Inventories::id>(new_row) = 10; //find a way to generate this 
+			nl::row_value<Inventories::id>(new_row) = GenRandomId(); //find a way to generate this 
 			nl::row_value<Inventories::product_id>(new_row) = mProductId;
 			nl::row_value<Inventories::date_issued>(new_row) = nl::clock::now();
 			nl::row_value<Inventories::quantity_out>(new_row) = 0;
@@ -71,7 +76,7 @@ void InventoryView::OnAddInventory(wxCommandEvent& evt)
 
 			Inventories::notification_data data{};
 			data.row_iterator = InventoryInstance::instance().add(new_row);
-			InventoryInstance::instance().notify(nl::notifications::add, data);
+			mProductInventoryData.notify<nl::notifications::add>(data);
 			break;
 		}
 		else if(RetCode == wxID_CANCEL){
@@ -280,11 +285,14 @@ void InventoryView::ResetProductInventoryList(std::uint64_t productID)
 	mSortColOrder.reset();
 
 	mProductId = productID;
-	(typename Inventories::relation_t&)mProductInventoryData = InventoryInstance::instance().where<Inventories::product_id>(
-		[&](std::uint64_t id) {
-			return id == mProductId;
-		}
-	);
+	mDatabaseMgr->RemoveQuery("load");
+	nl::query q;
+	q.select("*").from(Inventories::table_name).where(fmt::format("{} = \'{:d}\'",
+		Inventories::get_col_name<Inventories::product_id>(), mProductId));
+	spdlog::get("log")->info("{}", q.get_query());
+	mDatabaseMgr->AddQuery("load", q);
+	mDatabaseMgr->LoadTable();
+
 	mProductInventoryData.quick_sort<Inventories::date_issued, nl::order_dec<Inventories::elem_t<Inventories::date_issued>>>();
 	SetupImages();
 	SetItemCount(mProductInventoryData.size());

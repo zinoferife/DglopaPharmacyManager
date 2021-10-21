@@ -15,7 +15,7 @@
 #include "InventoryView.h"
 #include "ProductEntryDialog.h"
 #include "Searcher.h"
-
+#include "DatabaseManger.h"
 
 #include <nl_uuid.h>
 
@@ -61,6 +61,7 @@ private:
 	void CreateItemAttr();
 	//test
 	void CreateInventoryList();
+	void CreateDatabaseMgr();
 
 	void CreateInventory(std::uint64_t product_id);
 	void SetDefaultArt();
@@ -108,6 +109,7 @@ private:
 	std::unique_ptr<wxAuiManager> mPanelManager;
 	std::unique_ptr<wxDataViewCtrl> mDataView;
 	std::unique_ptr<InventoryView> mInventoryView;
+	std::unique_ptr<DatabaseManger<Products>> mDatabaseMgr;
 	DataModel<Products>* mModel;
 	wxAuiToolBar* bar;
 	wxSearchCtrl* search;

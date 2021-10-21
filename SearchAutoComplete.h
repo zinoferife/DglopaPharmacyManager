@@ -22,7 +22,7 @@ public:
 			auto DataRelation = mDataRef.like<ColumnCompleteOn>(ConstructRegex(prefix.ToStdString()));
 			if (!DataRelation.empty())
 			{
-				auto column = mDataRef.isolate_column<ColumnCompleteOn>();
+				auto column = DataRelation.isolate_column<ColumnCompleteOn>();
 				for (auto&& colItem : column)
 				{
 					completions.push_back(colItem);

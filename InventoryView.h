@@ -9,8 +9,9 @@
 
 
 #include "Tables.h"
-#include "DataModelBase.h"
 #include "Instances.h"
+#include "DataModelBase.h"
+#include "DatabaseManger.h"
 #include "SearchAutoComplete.h"
 #include "InventoryDialog.h"
 
@@ -72,7 +73,7 @@ public:
 	void OnRightClick(wxListEvent& evt);
 	void OnItemActivated(wxListEvent& evt);
 
-
+	inline Inventories& GetProductInventory() { return mProductInventoryData; }
 	//tool bar handlers
 	void OnAddInventory(wxCommandEvent& evt);
 	void OnRemoveInventory(wxCommandEvent& evt);
@@ -98,6 +99,7 @@ private:
 	std::uint64_t mProductId;
 	std::bitset<Inventories::column_count - 2> mSortColOrder;
 	Inventories mProductInventoryData;
+	std::unique_ptr<DatabaseManger<Inventories>> mDatabaseMgr;
 	std::unordered_map<std::uint64_t, std::shared_ptr<wxListItemAttr>> mAttributesTable{};
 	std::unordered_map<std::uint64_t, int> mImageTable{};
 	std::unordered_set<std::uint64_t> mCheckedTable{};

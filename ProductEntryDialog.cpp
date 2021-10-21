@@ -48,13 +48,18 @@ bool ProductEntryDialog::TransferDataFromWindow()
 	//do auto correct update
 	mSearchTable.add_in_order<0>({ nl::row_value<Products::name>(product) });
 	mSearchTable.add_in_order<0>({ category });
+
+	//json string
 	mSearchTable.add_in_order<0>({nl::row_value<ProductDetails::dir_for_use>(productDetail)});
 	
 	std::string view; 
 	std::string data = nl::row_value<ProductDetails::active_ing>(productDetail);
-	std::remove(data.begin(), data.end(), ' ');
+	data.erase(std::remove(data.begin(), data.end(), ' '), data.end());
 	std::stringstream stream(data);
-	while (!std::getline(stream, view, ',').eof()){
+	std::getline(stream, view, ',');
+	mSearchTable.add_in_order<0>({view});
+	while (!stream.eof()){
+		std::getline(stream, view, ',');
 		mSearchTable.add_in_order<0>({view});
 	}
 
@@ -87,12 +92,7 @@ void ProductEntryDialog::CreateDialog()
 	mProductCategoryCtrl->AutoComplete(new SearchAutoComplete<Categories, Categories::name>(CategoriesInstance::instance()));
 	mProductCategoryCtrl->SetValidator(wxTextValidator{ wxFILTER_EMPTY });
 
-	pane = new wxCollapsiblePane(this, wxID_ANY, "Add details");
-	pane->SetBackgroundColour(*wxWHITE);
-    wPane = pane->GetPane();
-	mProductDescCtrl = new wxTextCtrl(wPane, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_RICH | wxVSCROLL);
-	mProductDirForUseCtrl = new wxTextCtrl(wPane, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_RICH | wxVSCROLL);
-	mProductDirForUseCtrl->AutoComplete(new SearchAutoComplete<search_table, 0>(mSearchTable));
+	
 
 	mProductNameCtrl = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(200, -1));
 	mProductNameCtrl->AutoComplete(new SearchAutoComplete<search_table, 0>(mSearchTable));
@@ -109,7 +109,13 @@ void ProductEntryDialog::CreateDialog()
 
 	mProductPackageSizeCtrl = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxSize(200, -1), wxSP_ARROW_KEYS | wxALIGN_LEFT, 0, 10000);
 
-
+	pane = new wxCollapsiblePane(this, wxID_ANY, "Add details");
+	pane->SetBackgroundColour(*wxWHITE);
+	wPane = pane->GetPane();
+	wPane->SetBackgroundColour(*wxWHITE);
+	mProductDescCtrl = new wxTextCtrl(wPane, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_RICH | wxVSCROLL);
+	mProductDirForUseCtrl = new wxTextCtrl(wPane, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_RICH | wxVSCROLL);
+	mProductDirForUseCtrl->AutoComplete(new SearchAutoComplete<search_table, 0>(mSearchTable));
 
 	descp[0] = new wxStaticText(this, wxID_ANY, wxT("PRODUCT ENTRY"), wxDefaultPosition, wxDefaultSize, wxALIGN_LEFT);
 	descp[0]->SetFont(wxFont(10, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_BOLD));
@@ -126,7 +132,7 @@ void ProductEntryDialog::CreateDialog()
 
 	mOkButton = new wxButton(this, wxID_OK, "Ok");
 	mCancelButton = new wxButton(this, wxID_CANCEL, "Cancel");
-
+	SetDefaultItem(mOkButton);
 }
 
 void ProductEntryDialog::SizeDialog()
@@ -216,10 +222,13 @@ void ProductEntryDialog::OnOk(wxCommandEvent& evt)
 
 void ProductEntryDialog::OnCancel(wxCommandEvent& evt)
 {
-	if (IsModal()) EndModal(wxID_CANCEL);
-	else {
-		SetReturnCode(wxID_CANCEL);
-		this->Show(false);
+	if (wxMessageBox("Are you sure you want to cancel product entry?", "Product entry", wxICON_INFORMATION | wxYES_NO) == wxYES)
+	{
+		if (IsModal()) EndModal(wxID_CANCEL);
+		else {
+			SetReturnCode(wxID_CANCEL);
+			this->Show(false);
+		}
 	}
 }
 

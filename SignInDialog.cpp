@@ -41,6 +41,7 @@ SignInDialog::SignInDialog(wxWindow* parent, ActiveUser* user)
 	boxSizer->Add(flexSizer, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
 	boxSizer->Add(okCancleSizer, wxSizerFlags().Expand().Border(wxALL, 5));
 
+	SetDefaultItem(mOk);
 	topSizer->Add(boxSizer, wxSizerFlags().Expand().Border(wxALL, 5));
 	SetSizer(topSizer);
 	topSizer->SetSizeHints(this);

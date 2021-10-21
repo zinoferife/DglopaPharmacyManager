@@ -95,26 +95,19 @@ void MainView::CreateTreeCtrl()
 	//create the tree elements
 	mRootID = mTreeCtrl->AddRoot("Root");
 	
-	
-	auto generalID = AddToTree(mRootID, "General", folder, folder_open);
-	auto activityId = AddToTree(generalID, "Activities", file);
+	auto pharmacyID = AddToTree(mRootID, "Pharamacy", folder, folder_open);
+	mPView.first = AddToTree(pharmacyID, "Products", file);
+	AddToViewMap(mPView.second.get(),  mPView.first);
+	auto patientsId = AddToTree(pharmacyID, "Patients", file);
+	auto prescriptionsId = AddToTree(pharmacyID, "Prescriptions", file);
+	auto posionId = AddToTree(pharmacyID, "Posion book", file);
 
 
 	auto transactionsID= AddToTree(mRootID, "Transactions", folder, folder_open);
 	mSView.first = AddToTree(transactionsID, "Sales", file);
 	AddToViewMap(mSView.second.get(), mSView.first);
-	auto invoiceId =    AddToTree(transactionsID, "Invoice", file);
-	auto orderId =      AddToTree(transactionsID, "Order", file);
-
-	auto pharmacyID = AddToTree(mRootID, "Pharamacy", folder, folder_open);
-	auto patientsId = AddToTree(pharmacyID, "Patients", file);
-	auto prescriptionsId = AddToTree(pharmacyID, "Prescriptions", file);
-
-	auto inventoryID = AddToTree(mRootID, "Inventories", folder, folder_open);
-	mPView.first = AddToTree(inventoryID, "Products", file);
-	AddToViewMap(mPView.second.get(),  mPView.first);
-	
-	auto miscID = AddToTree(mRootID, "Micellenous", folder, folder_open );
+	auto invoiceId = AddToTree(transactionsID, "Invoice", file);
+	auto orderId =  AddToTree(transactionsID, "Order", file);
 
 
 	

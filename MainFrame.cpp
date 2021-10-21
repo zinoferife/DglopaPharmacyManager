@@ -119,7 +119,22 @@ void MainFrame::CreateDatabase()
 	catch (std::exception& exp)
 	{
 		mLog->error("{}", exp.what());
+		return;
 	}
+	DatabaseInstance::instance().set_update_handler([](void* arg, int evt, char const* database_name, char const* table_name, sqlite_int64 rowid){
+		switch (evt)
+		{
+		case nl::database_evt::D_INSERT:
+			spdlog::get("log")->info(" inserting into {}", table_name);
+			break;
+		case nl::database_evt::D_READ:
+			spdlog::get("log")->info("Reading from {}, rowid {:d}", table_name, rowid);
+			break;
+		case nl::database_evt::D_UPDATE:
+			spdlog::get("log")->info("Updating {}, rowid {:d}", table_name, rowid);
+			break;
+		}
+		}, nullptr);
 }
 
 //This should be customisable
