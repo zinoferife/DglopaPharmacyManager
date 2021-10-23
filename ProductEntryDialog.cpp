@@ -74,6 +74,7 @@ bool ProductEntryDialog::TransferDataToWindow()
 	auto names = CategoriesInstance::instance().isolate_column<Categories::name>();
 	for (auto&& name : names){
 		mProductCategoryCtrl->AppendString(name);
+		mSearchTable.add(name);
 	}
 	mSearchTable.unique<0>();
 	return true;

@@ -8,6 +8,7 @@
 
 #include <unordered_map>
 
+
 namespace std
 {
 	template<>
@@ -334,7 +335,6 @@ protected:
 	//each row can have an attribute type, 
 	itemToAttr_t mAttributeTable{};
 	Data& mData;
-
 	//one past the last added
 	std::int32_t mPastLastAdded;
 };

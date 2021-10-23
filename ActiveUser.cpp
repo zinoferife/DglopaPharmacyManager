@@ -17,7 +17,7 @@ bool ActiveUser::Authenticate(const std::string& password, std::string& username
 	std::transform(username.begin(), username.end(), username.begin(), [&](char& c) -> char {
 		return std::tolower(c);
 	});
-	auto end = std::remove(username.begin(), username.end(), '\s');
+	auto end = std::remove(username.begin(), username.end(), ' ');
 	username.erase(end, username.end());
 	auto iter = mUserTable.find_on<Users::username>(username);
 	//do password authentication here??

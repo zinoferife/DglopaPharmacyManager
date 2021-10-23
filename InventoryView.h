@@ -99,7 +99,7 @@ private:
 	std::uint64_t mProductId;
 	std::bitset<Inventories::column_count - 2> mSortColOrder;
 	Inventories mProductInventoryData;
-	std::unique_ptr<DatabaseManger<Inventories>> mDatabaseMgr;
+	std::unique_ptr<DatabaseManager<Inventories>> mDatabaseMgr;
 	std::unordered_map<std::uint64_t, std::shared_ptr<wxListItemAttr>> mAttributesTable{};
 	std::unordered_map<std::uint64_t, int> mImageTable{};
 	std::unordered_set<std::uint64_t> mCheckedTable{};

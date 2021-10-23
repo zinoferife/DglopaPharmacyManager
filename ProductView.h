@@ -6,6 +6,7 @@
 #include <wx/dataview.h>
 #include <wx/artprov.h>
 #include <wx/srchctrl.h>
+#include <wx/combobox.h>
 
 
 #include "Tables.h"
@@ -28,6 +29,7 @@
 #include <functional>
 class ProductView : public wxPanel
 {
+	constexpr static char all_categories[] = "All categories";
 public:
 	~ProductView();
 	ProductView();
@@ -50,7 +52,8 @@ public:
 		ID_INVENTORY_VIEW,
 		ID_INVENTORY_VIEW_TOOL_ADD,
 		ID_INVENTORY_VIEW_TOOL_REMOVE,
-		ID_INVENTORY_PRODUCT_NAME
+		ID_INVENTORY_PRODUCT_NAME,
+		ID_CATEGORY_LIST_CONTROL
 	};
 
 
@@ -58,6 +61,7 @@ private:
 	void CreateToolBar();
 	void CreateInentoryToolBar();
 	void CreateDataView();
+	void LoadCategoryToChoiceBox();
 	void CreateItemAttr();
 	//test
 	void CreateInventoryList();
@@ -88,7 +92,7 @@ private:
 	void OnSearchByName(const std::string& SearchString);
 	void OnSearchByCategory(const std::string& SearchString);
 	void OnSearchByPrice(const std::string& SearchString);
-
+	void OnCategorySelected(wxCommandEvent& evt);
 	//data view events
 	void OnProductItemSelected(wxDataViewEvent& evt);
 	void OnProductItemActivated(wxDataViewEvent& evt);
@@ -104,20 +108,20 @@ private:
 	void OnUsersNotification(const Users::table_t& table, const Users::notification_data& data);
 private:
 	//for test 
-	static int gen_random();
 	std::bitset<3> mSearchFlags;
 	std::unique_ptr<wxAuiManager> mPanelManager;
 	std::unique_ptr<wxDataViewCtrl> mDataView;
 	std::unique_ptr<InventoryView> mInventoryView;
-	std::unique_ptr<DatabaseManger<Products>> mDatabaseMgr;
+	std::unique_ptr<DatabaseManager<Products>> mDatabaseMgr;
+	std::unique_ptr<DatabaseManager<Categories>> mDatabaseCatgoryMgr;
 	DataModel<Products>* mModel;
 	wxAuiToolBar* bar;
 	wxSearchCtrl* search;
+	wxChoice* categories;
 	//product view item attributes
 	std::shared_ptr<wxDataViewItemAttr> mInStock;
 	std::shared_ptr<wxDataViewItemAttr> mExpired;
 	wxAuiToolBarItem* mInventoryProductName;
-	Products mTempProductTable;
 
 	DECLARE_EVENT_TABLE()
 };

@@ -18,6 +18,7 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_ERASE_BACKGROUND(ProductView::OnEraseBackground)
 	EVT_LIST_COL_CLICK(ProductView::ID_INVENTORY_VIEW, ProductView::OnInventoryViewColClick)
 	EVT_TOOL(ProductView::ID_INVENTORY_VIEW_TOOL_ADD, ProductView::OnInventoryAddTool)
+	EVT_CHOICE(ProductView::ID_CATEGORY_LIST_CONTROL, ProductView::OnCategorySelected)
 END_EVENT_TABLE()
 
 ProductView::ProductView()
@@ -66,9 +67,26 @@ void ProductView::CreateToolBar()
 	search->SetMenu(menu);
 	bar->AddControl(search);
 	
-	
+	wxArrayString choices;
+	choices.push_back(all_categories);
 	bar->AddStretchSpacer();
-	bar->AddTool(ID_QUICK_SORT_TEST, wxEmptyString, wxArtProvider::GetBitmap("search"));
+	categories = new wxChoice(bar, ID_CATEGORY_LIST_CONTROL, wxDefaultPosition, wxSize(200, -1), choices);
+	categories->SetSelection(0);
+	bar->AddControl(categories, "Categories");
+	categories->Bind(wxEVT_PAINT, [=](wxPaintEvent& evt) {
+		wxPaintDC dc(categories);
+		wxRect rect(0, 0, dc.GetSize().GetWidth(), dc.GetSize().GetHeight());
+
+		dc.SetBrush(*wxWHITE);
+		dc.SetPen(*wxGREY_PEN);
+		dc.DrawRectangle(rect);
+		dc.DrawBitmap(wxArtProvider::GetBitmap(wxART_GO_DOWN, wxART_OTHER, wxSize(10, 10)), wxPoint(rect.GetWidth() - 15, (rect.GetHeight() / 2) - 5));
+		auto sel = categories->GetStringSelection();
+		if (!sel.IsEmpty()){
+			dc.DrawLabel(sel, rect, wxALIGN_CENTER);
+		}
+	});
+
 	bar->AddTool(ID_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("maximize"));
 	bar->AddTool(ID_REMOVE_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("minimize"));
 	bar->AddTool(ID_ADD_PRODUCT, wxEmptyString, wxArtProvider::GetBitmap("action_add"));
@@ -117,7 +135,20 @@ void ProductView::CreateDataView()
 	Products::set_default_row(100, "test", 0, 0, "0.00", 9);
 
 	mDatabaseMgr->LoadTable();
+	mDatabaseCatgoryMgr->LoadTable();
+	LoadCategoryToChoiceBox();
 	mPanelManager->AddPane(mDataView.get(), wxAuiPaneInfo().Name("DataView").Caption("ProductView").CenterPane());
+}
+
+void ProductView::LoadCategoryToChoiceBox()
+{
+	auto cat = CategoriesInstance::instance().isolate_column<Categories::name>();
+	//size_t i = 0;
+	wxArrayString strArry;
+	for (auto&& name : cat){
+		strArry.push_back(std::move(name));
+	}
+	categories->Insert(strArry, 1);
 }
 
 void ProductView::CreateItemAttr()
@@ -136,8 +167,11 @@ void ProductView::CreateInventoryList()
 
 void ProductView::CreateDatabaseMgr()
 {
-	mDatabaseMgr.reset(new DatabaseManger<Products>(ProductInstance::instance(), DatabaseInstance::instance()));
+	mDatabaseMgr.reset(new DatabaseManager<Products>(ProductInstance::instance(), DatabaseInstance::instance()));
 	mDatabaseMgr->CreateTable();
+
+	mDatabaseCatgoryMgr.reset(new DatabaseManager<Categories>(CategoriesInstance::instance(), DatabaseInstance::instance()));
+	mDatabaseCatgoryMgr->CreateTable();
 }
 
 void ProductView::CreateInventory(std::uint64_t product_id)
@@ -373,8 +407,35 @@ void ProductView::OnSearchByCategory(const std::string& SearchString)
 
 void ProductView::OnSearchByPrice(const std::string& SearchString)
 {
-	if (SearchString.empty()) return;
+	
+}
 
+void ProductView::OnCategorySelected(wxCommandEvent& evt)
+{
+	auto SearchString = categories->GetStringSelection().ToStdString();
+	if (SearchString.empty()) return;
+	if (SearchString == all_categories){
+		ProductInstance::instance().notify<nl::notifications::clear>({});
+		Products::notification_data data;
+		data.count = ProductInstance::instance().size();
+		ProductInstance::instance().notify<nl::notifications::load>(data);
+	}
+
+	Searcher<Categories::name, Categories> categorySearcher(CategoriesInstance::instance());
+	auto CatIndices = categorySearcher.Search(SearchString);
+	if (CatIndices.empty()) return;
+
+	ProductInstance::instance().notify<nl::notifications::clear>({});
+	auto ProductIndices = ProductInstance::instance()
+		.where_index<Products::category_id>([&](typename Categories::elem_t<Categories::id>& id) {
+		for (auto& i : CatIndices) {
+			if (id == nl::row_value<Categories::id>(CategoriesInstance::instance()[i])) {
+				return true;
+			}
+		}
+		return false;
+			});
+	mModel->ReloadIndices(std::move(ProductIndices));
 }
 
 void ProductView::OnProductItemSelected(wxDataViewEvent& evt)
@@ -488,7 +549,7 @@ void ProductView::OnInventoryAddNotification(const Inventories::table_t& table, 
 		data_p.column = Products::stock_count;
 		ProductInstance::instance().notify(nl::notifications::update, data_p);
 		mModel->RemoveAttribute(nl::row_value<Products::id>(*it));
-		mDatabaseMgr->UpdateTable(it, ProductInstance::instance().get<Products::stock_count>(it),
+		mDatabaseMgr->UpdateTable(nl::row_value<Products::id>(*it), ProductInstance::instance().get<Products::stock_count>(it),
 			Products::get_col_name<Products::stock_count>());
 	}
 }
@@ -510,12 +571,3 @@ void ProductView::OnUsersNotification(const Users::table_t& table, const Users::
 }
 
 
-//remove
-int ProductView::gen_random()
-{
-	static std::mt19937 engine(std::random_device{}());
-	static std::uniform_int_distribution<int> dist(0, 100);
-	static auto random = std::bind(dist, engine);
-
-	return random();
-}

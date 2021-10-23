@@ -4,7 +4,7 @@
 InventoryView::InventoryView(std::uint64_t ProductID, wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize size)
 	: wxListCtrl(parent, id, position, size, wxLC_REPORT | wxLC_VIRTUAL | wxLC_HRULES | wxNO_BORDER), mProductId(ProductID), mSortColumn{-1}{
 
-	mDatabaseMgr = std::make_unique<DatabaseManger<Inventories>>(mProductInventoryData, DatabaseInstance::instance());
+	mDatabaseMgr = std::make_unique<DatabaseManager<Inventories>>(mProductInventoryData, DatabaseInstance::instance());
 	nl::query q;
 	q.select("*").from(Inventories::table_name).where(fmt::format("{} = \'{:d}\'", 
 		Inventories::get_col_name<Inventories::product_id>(), ProductID));

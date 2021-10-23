@@ -14,7 +14,7 @@
 
 
 template<typename table>
-class DatabaseManger
+class DatabaseManager
 {
 	static_assert(nl::detail::is_relation_v<table>, "Database manager only manages relations");
 	template<size_t I>
@@ -30,14 +30,6 @@ class DatabaseManger
 			}
 			return q_;
 		}
-
-		inline void do_update(size_t column, const typename table::notification_data& data) {
-			if (column == I){
-				if (column == table::id) return;
-
-			}
-		}
-
 	};
 
 
@@ -57,10 +49,10 @@ class DatabaseManger
 	};
 
 public:
-	DatabaseManger(table& table, nl::database& database): mTable(table), mDatabase(database){
+	DatabaseManager(table& table, nl::database& database): mTable(table), mDatabase(database){
 		RegisterNotifications();
 	}
-	~DatabaseManger()
+	~DatabaseManager()
 	{
 		UnregisterNotifications();
 	}
@@ -94,19 +86,29 @@ public:
 
 //database operations
 	void CreateTable(){
-		nl::query q;
-		q.create_table(table::table_name);
-		loop<table::column_count - 1>::create_query(q);
-		q.end_col();
-		auto statement = mDatabase.prepare_query(q);
-		if (statement == nl::database::BADSTMT){
-			spdlog::get("log")->error("Invalid query {}", q.get_query());
-		}
-		else {
+		auto create_statement = m_statements.find("create");
+		if (create_statement == m_statements.end())
+		{
+			nl::query q;
+			q.create_table(table::table_name);
+			loop<table::column_count - 1>::create_query(q);
+			q.end_col();
 			spdlog::get("log")->info("{}", q.get_query());
-			if (!mDatabase.exec_once(statement)){
-				spdlog::get("log")->error("{} : {}", q.get_query(), mDatabase.get_error_msg());
+			auto statement = mDatabase.prepare_query(q);
+			if (statement == nl::database::BADSTMT) {
+				spdlog::get("log")->error("Invalid query {}", q.get_query());
+				return;
 			}
+			auto [iter, inserted] = m_statements.insert({ "create", statement });
+			if (!inserted){
+				spdlog::get("log")->error("Could not insert create statement in cache");
+				return;
+			}
+			create_statement = iter;
+		}
+
+		if (!mDatabase.exec_once(create_statement->second)) {
+				spdlog::get("log")->error("{}", mDatabase.get_error_msg());
 		}
 	}
 	
@@ -153,31 +155,30 @@ public:
 	}
 
 	void RegisterNotifications(){
-		mTable.sink<nl::notifications::add>().add_listener<DatabaseManger, & DatabaseManger::OnAddNotification>(this);
+		mTable.sink<nl::notifications::add>().add_listener<DatabaseManager, & DatabaseManager::OnAddNotification>(this);
 	}
 	void UnregisterNotifications(){
-		mTable.sink<nl::notifications::add>().remove_listener<DatabaseManger, & DatabaseManger::OnAddNotification>(this);
+		mTable.sink<nl::notifications::add>().remove_listener<DatabaseManager, & DatabaseManager::OnAddNotification>(this);
 	}
 
 	template<typename... column_names, typename... values>
-	void UpdateTable(typename table::const_iterator row_iterator, const std::tuple<values...>& data, const column_names& ... names){
+	void UpdateTable(typename table::template elem_t<table::id> id, const std::tuple<values...>& data, const column_names& ... names){
 		using names_t = std::tuple<column_names...>;
 		using first_name_t = std::tuple_element_t<0, names_t>;
-		static_assert(std::is_convertible_v<first_name_t, std::string>, "column names should have a string type");
-		static_assert(std::conjunction_v<std::is_same<first_name_t, column_names>...>, "column names should have the same type");
-		std::array<std::reference_wrapper<const first_name_t> , sizeof... (column_names)> col_names{ std::cref(names)... }; //column names that needs updating
+		static_assert(std::is_convertible_v<first_name_t, std::string> && std::conjunction_v<std::is_same<first_name_t, column_names>...>,
+			"column names should have a string type and they all should have the same type");
 			
 		nl::query q;
-		update_query(std::make_index_sequence<sizeof...(column_names)>{}, q, col_names);
-		q.where(fmt::format("{} = \'{:d}\'", table:: template get_col_name<table::id>(),
-			nl::row_value<table::id>(*(row_iterator))));
+		q.update(table::table_name);
+		q.set(names...);
+		q.where(fmt::format("{} = \'{:d}\'", table:: template get_col_name<table::id>(), id));
 		spdlog::get("log")->info("update query {}", q.get_query());
 		auto statement = mDatabase.prepare_query(q);
 		if (statement == nl::database::BADSTMT){
 			spdlog::get("log")->error("invalid query: {}", q.get_query());
 			return;
 		}
-		bool ret = update(std::make_index_sequence<sizeof ...(column_names)>{}, statement, data, col_names);
+		bool ret = mDatabase.update(statement, data, names...);
 		if (!ret){
 			spdlog::get("log")->error("Could not update {}, error {}", table::table_name, mDatabase.get_error_msg());
 		}
