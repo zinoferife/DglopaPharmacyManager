@@ -50,6 +50,14 @@ void ArtProvider::CreateArtStore()
 							}
 						}
 					}
+					else if (extension == ".png"){
+						auto [iter, inserted] = mImageStore.insert({ filename, wxBitmap(d_path.string(), wxBITMAP_TYPE_PNG)});
+						if (inserted){
+							if (!iter->second.IsOk()) {
+								spdlog::get("log")->error("Cannot create art image store, error loading from {}", filename);
+							}
+						}
+					}
 				}
 			}
 

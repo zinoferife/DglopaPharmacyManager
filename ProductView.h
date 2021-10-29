@@ -7,6 +7,8 @@
 #include <wx/artprov.h>
 #include <wx/srchctrl.h>
 #include <wx/combobox.h>
+#include <wx/progdlg.h>
+
 
 
 #include "Tables.h"
@@ -17,21 +19,30 @@
 #include "ProductEntryDialog.h"
 #include "Searcher.h"
 #include "DatabaseManger.h"
+#include "DetailView.h"
+
 
 #include <nl_uuid.h>
 
 #include <spdlog/spdlog.h>
+#include <nlohmann/json.hpp>
 
+#include <fstream>
 #include <unordered_map>
 #include <bitset>
 #include <memory>
 #include <random>
 #include <functional>
+
+
+namespace js = nlohmann;
+
 class ProductView : public wxPanel
 {
 	constexpr static char all_categories[] = "All categories";
 public:
 	~ProductView();
+
 	ProductView();
 	ProductView(wxWindow* parent, wxWindowID id, const wxPoint& position = wxDefaultPosition, const wxSize size = wxDefaultSize);
 	//toobar id
@@ -53,10 +64,12 @@ public:
 		ID_INVENTORY_VIEW_TOOL_ADD,
 		ID_INVENTORY_VIEW_TOOL_REMOVE,
 		ID_INVENTORY_PRODUCT_NAME,
-		ID_CATEGORY_LIST_CONTROL
+		ID_CATEGORY_LIST_CONTROL,
+		ID_PRODUCT_CONTEXT_EDIT
 	};
 
 
+	void ImportProductsFromJson(std::fstream& file);
 private: 
 	void CreateToolBar();
 	void CreateInentoryToolBar();
@@ -97,15 +110,21 @@ private:
 	void OnProductItemSelected(wxDataViewEvent& evt);
 	void OnProductItemActivated(wxDataViewEvent& evt);
 	void OnColumnHeaderClick(wxDataViewEvent& evt);
+	void OnProductContextMenu(wxDataViewEvent& evt);
+	void OnProductDetailView(wxCommandEvent& evt);
 
 
 	void DoSearch(const std::string& searchString);
-
+	void DoCategorySelect(const std::string& selected_category);
 
 	void RegisterNotification();
 	void UnregisterNotification();
 	void OnInventoryAddNotification(const Inventories::table_t& table, const Inventories::notification_data& data);
 	void OnUsersNotification(const Users::table_t& table, const Users::notification_data& data);
+	void OnCategoryAddNotification(const Categories::table_t& table, const Categories::notification_data& data);
+	void OnProductUpdateNotification(const Products::table_t& table, const Products::notification_data& data);
+	void OnProductDetailUpdateNotification(const ProductDetails::table_t&, const ProductDetails::notification_data& data);
+	
 private:
 	//for test 
 	std::bitset<3> mSearchFlags;
@@ -114,6 +133,10 @@ private:
 	std::unique_ptr<InventoryView> mInventoryView;
 	std::unique_ptr<DatabaseManager<Products>> mDatabaseMgr;
 	std::unique_ptr<DatabaseManager<Categories>> mDatabaseCatgoryMgr;
+	std::unique_ptr<DatabaseManager<ProductDetails>> mDatabaseDetailMgr;
+	std::unique_ptr<DetailView> mDetailView;
+
+
 	DataModel<Products>* mModel;
 	wxAuiToolBar* bar;
 	wxSearchCtrl* search;
@@ -121,6 +144,8 @@ private:
 	//product view item attributes
 	std::shared_ptr<wxDataViewItemAttr> mInStock;
 	std::shared_ptr<wxDataViewItemAttr> mExpired;
+	std::shared_ptr<wxDataViewItemAttr> mModified;
+
 	wxAuiToolBarItem* mInventoryProductName;
 
 	DECLARE_EVENT_TABLE()

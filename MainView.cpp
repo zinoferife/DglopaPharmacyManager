@@ -1,5 +1,7 @@
 #include "common.h"
 #include "MainView.h"
+
+
 BEGIN_EVENT_TABLE(MainView, wxPanel)
 EVT_TREE_ITEM_ACTIVATED(MainView::TREE, MainView::OnTreeItemActivated)
 EVT_TREE_SEL_CHANGED(MainView::TREE, MainView::OnTreeItemSelectionChanged)
@@ -79,7 +81,7 @@ void MainView::CreatePageBook()
 	mViewBook->SetImageList(mImageList.get());
 	CreateSalesView();
 	CreateProductView();
-	mViewBook->SetForegroundColour(*wxWHITE);
+	mViewBook->SetBackgroundColour(*wxWHITE);
 	mViewBook->ClearBackground();
 }
 
@@ -95,7 +97,7 @@ void MainView::CreateTreeCtrl()
 	//create the tree elements
 	mRootID = mTreeCtrl->AddRoot("Root");
 	
-	auto pharmacyID = AddToTree(mRootID, "Pharamacy", folder, folder_open);
+	auto pharmacyID = AddToTree(mRootID, "Pharamacy", hospital, -1);
 	mPView.first = AddToTree(pharmacyID, "Products", file);
 	AddToViewMap(mPView.second.get(),  mPView.first);
 	auto patientsId = AddToTree(pharmacyID, "Patients", file);
@@ -103,7 +105,7 @@ void MainView::CreateTreeCtrl()
 	auto posionId = AddToTree(pharmacyID, "Posion book", file);
 
 
-	auto transactionsID= AddToTree(mRootID, "Transactions", folder, folder_open);
+	auto transactionsID= AddToTree(mRootID, "Transactions", health_file, -1);
 	mSView.first = AddToTree(transactionsID, "Sales", file);
 	AddToViewMap(mSView.second.get(), mSView.first);
 	auto invoiceId = AddToTree(transactionsID, "Invoice", file);
@@ -119,11 +121,11 @@ void MainView::CreateImageLists()
 	mImageList = std::make_unique<wxImageList>(16, 16);
 	mImageList->Add(wxArtProvider::GetBitmap("user"));
 	mImageList->Add(wxArtProvider::GetBitmap("download"));
-	mImageList->Add(wxArtProvider::GetBitmap("folder"));
-	mImageList->Add(wxArtProvider::GetBitmap("folder_open"));
+	mImageList->Add(wxArtProvider::GetBitmap("hospital"));
+	mImageList->Add(wxArtProvider::GetBitmap("health-file"));
 	mImageList->Add(wxArtProvider::GetBitmap("action_add"));
 	mImageList->Add(wxArtProvider::GetBitmap("action_remove"));
-	mImageList->Add(wxArtProvider::GetBitmap("file"));
+	mImageList->Add(wxArtProvider::GetBitmap("drug"));
 }
 
 
@@ -237,6 +239,20 @@ void MainView::OnTreeItemGetInfo(wxTreeEvent& evt)
 void MainView::OnTreeItemSetInfo(wxTreeEvent& evt)
 {
 	
+}
+
+void MainView::ImportJson(const fs::path& path)
+{
+	if (path.extension().string() != ".json"){
+		wxMessageBox(fmt::format("{} is not a JSON file", path.filename().string()), "JSON IMPORT", wxICON_WARNING);
+		return;
+	}
+	std::fstream file(path, std::ios::in);
+	if (!file.is_open()){
+		wxMessageBox(fmt::format("invalid json file {}", path.filename().string()), "JSON IMPORT", wxICON_WARNING);
+		return;
+	}
+	mPView.second->ImportProductsFromJson(file);
 }
 
 void MainView::OnBookClosed(wxAuiNotebookEvent& evt)

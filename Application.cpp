@@ -76,7 +76,7 @@ bool Application::OnInit()
 	gApplicationPath = wxFindAppPath(argv[0], curDir, wxT("APMANAGER"), wxT("Afrobug pharamacy manager"));
 
 	MainFrame* frame = new MainFrame(nullptr, wxID_ANY, wxDefaultPosition, wxSize(990, 750));
-	frame->CenterOnScreen();
+	frame->Maximize();
 	frame->Show();
 	return true;
 }

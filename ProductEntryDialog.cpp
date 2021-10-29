@@ -44,7 +44,7 @@ bool ProductEntryDialog::TransferDataFromWindow()
 	nl::row_value<ProductDetails::active_ing>(productDetail) = std::move(mProductActiveIngredentCtrl->GetValue().ToStdString());
 	nl::row_value<ProductDetails::dir_for_use>(productDetail) = std::move(mProductDirForUseCtrl->GetValue().ToStdString());
 	nl::row_value<ProductDetails::p_class>(productDetail) = choices[mProductClassCtrl->GetSelection()];
-
+	nl::row_value<ProductDetails::description>(productDetail) = std::move(mProductDescCtrl->GetValue().ToStdString());
 	//do auto correct update
 	mSearchTable.add_in_order<0>({ nl::row_value<Products::name>(product) });
 	mSearchTable.add_in_order<0>({ category });

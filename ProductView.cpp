@@ -15,6 +15,8 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_MENU(ProductView::ID_SEARCH_BY_PRICE, ProductView::OnSearchFlag)
 	EVT_DATAVIEW_ITEM_ACTIVATED(ProductView::ID_DATA_VIEW, ProductView::OnProductItemActivated)
 	EVT_DATAVIEW_COLUMN_HEADER_CLICK(ProductView::ID_DATA_VIEW, ProductView::OnColumnHeaderClick)
+	EVT_DATAVIEW_ITEM_CONTEXT_MENU(ProductView::ID_DATA_VIEW, ProductView::OnProductContextMenu)
+	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_EDIT, ProductView::OnProductDetailView)
 	EVT_ERASE_BACKGROUND(ProductView::OnEraseBackground)
 	EVT_LIST_COL_CLICK(ProductView::ID_INVENTORY_VIEW, ProductView::OnInventoryViewColClick)
 	EVT_TOOL(ProductView::ID_INVENTORY_VIEW_TOOL_ADD, ProductView::OnInventoryAddTool)
@@ -30,6 +32,7 @@ ProductView::~ProductView()
 	UnregisterNotification();
 	mDataView.release();
 	mInventoryView.release();
+	mDetailView.release();
 }
 
 ProductView::ProductView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize size)
@@ -87,7 +90,7 @@ void ProductView::CreateToolBar()
 		}
 	});
 
-	bar->AddTool(ID_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("maximize"));
+	bar->AddTool(ID_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("bag"));
 	bar->AddTool(ID_REMOVE_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("minimize"));
 	bar->AddTool(ID_ADD_PRODUCT, wxEmptyString, wxArtProvider::GetBitmap("action_add"));
 	bar->AddTool(ID_REMOVE_PRODUCT, wxEmptyString, wxArtProvider::GetBitmap("action_remove"));
@@ -135,6 +138,7 @@ void ProductView::CreateDataView()
 	Products::set_default_row(100, "test", 0, 0, "0.00", 9);
 
 	mDatabaseMgr->LoadTable();
+	mDatabaseDetailMgr->LoadTable();
 	mDatabaseCatgoryMgr->LoadTable();
 	LoadCategoryToChoiceBox();
 	mPanelManager->AddPane(mDataView.get(), wxAuiPaneInfo().Name("DataView").Caption("ProductView").CenterPane());
@@ -155,8 +159,10 @@ void ProductView::CreateItemAttr()
 {
 	mInStock = std::make_shared<wxDataViewItemAttr>();
 	mExpired = std::make_shared<wxDataViewItemAttr>();
+	mModified = std::make_shared<wxDataViewItemAttr>();
 	mInStock->SetBackgroundColour(wxTheColourDatabase->Find("Navajo_white"));
 	mExpired->SetBackgroundColour(wxTheColourDatabase->Find("Tomato"));
+	mModified->SetBold(true);
 }
 
 void ProductView::CreateInventoryList()
@@ -172,6 +178,9 @@ void ProductView::CreateDatabaseMgr()
 
 	mDatabaseCatgoryMgr.reset(new DatabaseManager<Categories>(CategoriesInstance::instance(), DatabaseInstance::instance()));
 	mDatabaseCatgoryMgr->CreateTable();
+
+	mDatabaseDetailMgr.reset(new DatabaseManager<ProductDetails>(ProductDetailsInstance::instance(), DatabaseInstance::instance()));
+	mDatabaseDetailMgr->CreateTable();
 }
 
 void ProductView::CreateInventory(std::uint64_t product_id)
@@ -219,6 +228,84 @@ void ProductView::HideInventoryToolBar()
 {
 	mPanelManager->GetPane("InventoryTool").Hide();
 	mPanelManager->GetPane("Tool").Show();
+}
+
+void ProductView::ImportProductsFromJson(std::fstream& file)
+{
+	auto format_cat_name = [&](std::string& cat_name) -> std::string& {
+		std::transform(cat_name.begin(), cat_name.end(), cat_name.begin(), [&](char& c) {
+			return std::toupper(c);
+		});
+		return cat_name;
+	};
+
+	js::json json;
+	wxProgressDialog progress("Importing json", "Reading file...");
+	file >> json;
+	if (json.empty()){
+		wxMessageBox("Json file is corrupted, invalid json file", "JSON IMPORT", wxICON_ERROR | wxOK);
+		return;
+	}
+	Products products;
+	ProductDetails products_detail;
+	Categories category;
+	progress.Update(10, "Reading products");
+	for (auto cat_obj = json.begin(); cat_obj != json.end(); cat_obj++){
+		std::string cat_name = cat_obj.key();
+		auto cat_iter = category.find_on<Categories::name>(format_cat_name(cat_name));
+		if (cat_iter == category.end()){
+			cat_iter = category.add(GenRandomId(), cat_name);
+		}
+		for (auto product_obj = cat_obj->begin(); product_obj != cat_obj->end(); product_obj++){
+			auto& value = product_obj.value();
+			Products::row_t product;
+			ProductDetails::row_t product_detail;
+			size_t progress_value = 10;
+			try {
+				nl::row_value<Products::id>(product) = GenRandomId();
+				nl::row_value<Products::category_id>(product) = nl::row_value<Categories::id>(*cat_iter);
+				nl::row_value<Products::name>(product) = product_obj.key();
+				nl::row_value<Products::package_size>(product) = value["Package size"];
+				nl::row_value<Products::stock_count>(product) = value["Stock count"];
+				nl::row_value<Products::unit_price>(product) = js::to_string(value["Unit price"]);
+				
+
+				nl::row_value<ProductDetails::id>(product_detail) = nl::row_value<Products::id>(product);
+				nl::row_value<ProductDetails::active_ing>(product_detail) = fmt::to_string(value["Product Active ingredent"]);
+				nl::row_value<ProductDetails::description>(product_detail) = fmt::to_string(value["Product Description"]);
+				nl::row_value<ProductDetails::p_class>(product_detail) = fmt::to_string(value["Product class"]);
+				nl::row_value<ProductDetails::dir_for_use>(product_detail) = fmt::to_string(value["Direction for use"]);
+				nl::row_value<ProductDetails::health_conditions>(product_detail) = fmt::format("{}", fmt::join(value["Health tags"], ","));
+				products.add(product);
+				products_detail.add(product_detail);
+				if (progress_value < 80) {
+					progress.Update(++progress_value, product_obj.key());
+				}
+			}
+			catch (js::json::type_error& error){
+				spdlog::get("log")->error("JSON ERROR: {}", error.what());
+				wxMessageBox("JSON FATAL ERROR", "JSON IMPORT", wxICON_ERROR | wxOK);
+				return;
+			}
+		}
+	}
+	Products::notification_data data;
+	data.count = ProductInstance::instance().append_relation(products);
+	ProductInstance::instance().notify<nl::notifications::add_multiple>(data);
+
+	ProductDetails::notification_data data_details;
+	data_details.count = ProductDetailsInstance::instance().append_relation(products_detail);
+	ProductDetailsInstance::instance().notify<nl::notifications::add_multiple>(data_details);
+
+	Categories::notification_data data_category;
+	data_category.count = CategoriesInstance::instance().append_relation(category);
+	CategoriesInstance::instance().notify<nl::notifications::add_multiple>(data_category);
+
+	mDatabaseMgr->InsertTable(products);
+	mDatabaseDetailMgr->InsertTable(products_detail);
+	mDatabaseCatgoryMgr->InsertTable(category);
+
+	progress.Update(100, "Sucessfully read json file");
 }
 
 void ProductView::OnAddProduct(wxCommandEvent& evt)
@@ -309,10 +396,7 @@ void ProductView::OnSearchProduct(wxCommandEvent& evt)
 //need to think about this more
 void ProductView::OnSearchCleared(wxCommandEvent& evt)
 {
-	ProductInstance::instance().notify<nl::notifications::clear>({});
-	Products::notification_data data;
-	data.count = ProductInstance::instance().size();
-	ProductInstance::instance().notify<nl::notifications::load>(data);
+	DoCategorySelect(categories->GetStringSelection().ToStdString());
 }
 
 void ProductView::OnEraseBackground(wxEraseEvent& evt)
@@ -412,30 +496,7 @@ void ProductView::OnSearchByPrice(const std::string& SearchString)
 
 void ProductView::OnCategorySelected(wxCommandEvent& evt)
 {
-	auto SearchString = categories->GetStringSelection().ToStdString();
-	if (SearchString.empty()) return;
-	if (SearchString == all_categories){
-		ProductInstance::instance().notify<nl::notifications::clear>({});
-		Products::notification_data data;
-		data.count = ProductInstance::instance().size();
-		ProductInstance::instance().notify<nl::notifications::load>(data);
-	}
-
-	Searcher<Categories::name, Categories> categorySearcher(CategoriesInstance::instance());
-	auto CatIndices = categorySearcher.Search(SearchString);
-	if (CatIndices.empty()) return;
-
-	ProductInstance::instance().notify<nl::notifications::clear>({});
-	auto ProductIndices = ProductInstance::instance()
-		.where_index<Products::category_id>([&](typename Categories::elem_t<Categories::id>& id) {
-		for (auto& i : CatIndices) {
-			if (id == nl::row_value<Categories::id>(CategoriesInstance::instance()[i])) {
-				return true;
-			}
-		}
-		return false;
-			});
-	mModel->ReloadIndices(std::move(ProductIndices));
+	DoCategorySelect(categories->GetStringSelection().ToStdString());
 }
 
 void ProductView::OnProductItemSelected(wxDataViewEvent& evt)
@@ -519,6 +580,36 @@ void ProductView::OnColumnHeaderClick(wxDataViewEvent& evt)
 	mDataView->Refresh();
 }
 
+void ProductView::OnProductContextMenu(wxDataViewEvent& evt)
+{
+	wxMenu* menu = new wxMenu;
+	auto edit_m = menu->Append(ID_PRODUCT_CONTEXT_EDIT, "Edit");
+	edit_m->SetBitmaps(wxArtProvider::GetBitmap("reply"));
+	PopupMenu(menu);
+}
+
+void ProductView::OnProductDetailView(wxCommandEvent& evt)
+{
+	auto selectedItem = mDataView->GetSelection();
+	if (!selectedItem.IsOk()){
+		wxMessageBox("No item selected", "EDIT PRODUCT", wxICON_INFORMATION | wxOK);
+		return;
+	}
+	auto index = mModel->GetDataViewItemIndex(selectedItem);
+	if (index == wxNOT_FOUND){
+		spdlog::get("log")->error("Invalid index, fatal");
+		return;
+	}
+	if (!mDetailView) {
+		mDetailView = std::make_unique<DetailView>(nl::row_value<Products::id>(ProductInstance::instance()[index]),
+			this, wxID_ANY, wxDefaultPosition, wxSize(500, -1));
+		mPanelManager->AddPane(mDetailView.get(), wxAuiPaneInfo().Name("DetailView").Caption("Product edit").Right().Show());
+		mPanelManager->Update();
+		return;
+	}
+	mDetailView->LoadDataIntoGrid(nl::row_value<Products::id>(ProductInstance::instance()[index]));
+}
+
 void ProductView::DoSearch(const std::string& searchString)
 {
 	Searcher<Products::name, Products> search(ProductInstance::instance());
@@ -526,14 +617,48 @@ void ProductView::DoSearch(const std::string& searchString)
 	mModel->ReloadIndices(search.Search(searchString));
 }
 
+void ProductView::DoCategorySelect(const std::string& SearchString)
+{
+	if (SearchString.empty()) return;
+	if (SearchString == all_categories) {
+		ProductInstance::instance().notify<nl::notifications::clear>({});
+		Products::notification_data data;
+		data.count = ProductInstance::instance().size();
+		ProductInstance::instance().notify<nl::notifications::load>(data);
+	}
+	else {
+		Searcher<Categories::name, Categories> categorySearcher(CategoriesInstance::instance());
+		auto CatIndices = categorySearcher.Search(SearchString);
+		if (CatIndices.empty()) return;
+
+		ProductInstance::instance().notify<nl::notifications::clear>({});
+		auto ProductIndices = ProductInstance::instance()
+			.where_index<Products::category_id>([&](typename Categories::elem_t<Categories::id>& id) {
+			for (auto& i : CatIndices) {
+				if (id == nl::row_value<Categories::id>(CategoriesInstance::instance()[i])) {
+					return true;
+				}
+			}
+			return false;
+				});
+		mModel->ReloadIndices(std::move(ProductIndices));
+	}
+}
+
 void ProductView::RegisterNotification()
 {
 	UsersInstance::instance().sink<nl::notifications::evt>().add_listener<ProductView, & ProductView::OnUsersNotification>(this);
+	CategoriesInstance::instance().sink<nl::notifications::add>().add_listener<ProductView, & ProductView::OnCategoryAddNotification>(this);
+	ProductInstance::instance().sink<nl::notifications::update>().add_listener<ProductView, & ProductView::OnProductUpdateNotification>(this);
+	ProductDetailsInstance::instance().sink<nl::notifications::update>().add_listener<ProductView, & ProductView::OnProductDetailUpdateNotification>(this);
 }
 
 void ProductView::UnregisterNotification()
 {
 	UsersInstance::instance().sink<nl::notifications::evt>().remove_listener<ProductView, & ProductView::OnUsersNotification>(this);
+	CategoriesInstance::instance().sink<nl::notifications::add>().remove_listener<ProductView, & ProductView::OnCategoryAddNotification>(this);
+	ProductInstance::instance().sink<nl::notifications::update>().remove_listener<ProductView, & ProductView::OnProductUpdateNotification>(this);
+	ProductDetailsInstance::instance().sink<nl::notifications::update>().remove_listener<ProductView, & ProductView::OnProductDetailUpdateNotification>(this);
 }
 
 void ProductView::OnInventoryAddNotification(const Inventories::table_t& table, const Inventories::notification_data& data)
@@ -568,6 +693,107 @@ void ProductView::OnUsersNotification(const Users::table_t& table, const Users::
 		break;
 	}
 
+}
+
+void ProductView::OnCategoryAddNotification(const Categories::table_t& table, const Categories::notification_data& data)
+{
+	//insert into choicebox
+	wxString name = nl::row_value<Categories::name>(*(data.row_iterator));
+	categories->Insert(1, &name, categories->GetCount());
+}
+
+void ProductView::OnProductUpdateNotification(const Products::table_t& table, const Products::notification_data& data)
+{
+	try {
+		switch (data.column)
+		{
+		case Products::name:
+			if (std::holds_alternative<Products::elem_t<Products::name>>(data.column_value)) {
+				nl::row_value<Products::name>(*data.row_iterator) = std::get<Products::elem_t<Products::name>>(data.column_value);
+				mDatabaseMgr->UpdateTable(nl::row_value<Products::id>(*data.row_iterator),
+					std::tuple<Products::elem_t<Products::name>>(std::get<Products::elem_t<Products::name>>(data.column_value)), Products::col_names[data.column]);
+			}
+			break;
+		case Products::package_size:
+			if (std::holds_alternative<Products::elem_t<Products::package_size>>(data.column_value)) {
+				nl::row_value<Products::package_size>(*data.row_iterator) = std::get<Products::elem_t<Products::package_size>>(data.column_value);
+				mDatabaseMgr->UpdateTable(nl::row_value<Products::id>(*data.row_iterator),
+					std::tuple<Products::elem_t<Products::package_size>>(std::get<Products::elem_t<Products::package_size>>(data.column_value)), Products::col_names[data.column]);
+			}
+			break;
+		case Products::stock_count:
+			if (std::holds_alternative<Products::elem_t<Products::stock_count>>(data.column_value)) {
+				nl::row_value<Products::stock_count>(*data.row_iterator) = std::get<Products::elem_t<Products::stock_count>>(data.column_value);
+				mDatabaseMgr->UpdateTable(nl::row_value<Products::id>(*data.row_iterator),
+					std::tuple<Products::elem_t<Products::stock_count>>(std::get<Products::elem_t<Products::stock_count>>(data.column_value)), Products::col_names[data.column]);
+			}
+			break;
+		case Products::unit_price:
+			if (std::holds_alternative<Products::elem_t<Products::unit_price>>(data.column_value)) {
+				nl::row_value<Products::unit_price>(*data.row_iterator) = std::get<Products::elem_t<Products::unit_price>>(data.column_value);
+				mDatabaseMgr->UpdateTable(nl::row_value<Products::id>(*data.row_iterator),
+					std::tuple<Products::elem_t<Products::unit_price>>(std::get<Products::elem_t<Products::unit_price>>(data.column_value)), Products::col_names[data.column]);
+			}
+			break;
+		}
+
+	}
+	catch (std::exception& except){
+		spdlog::get("log")->critical("Varient not the correct type, {}", except.what());
+		return;
+	}
+	mModel->AddAttribute(mModified, nl::row_value<Products::id>(*data.row_iterator));
+}
+
+void ProductView::OnProductDetailUpdateNotification(const ProductDetails::table_t&, const ProductDetails::notification_data& data)
+{
+	try {
+		switch (data.column)
+		{
+		case ProductDetails::p_class:
+			if (std::holds_alternative<ProductDetails::elem_t<ProductDetails::p_class>>(data.column_value)) {
+				nl::row_value<ProductDetails::p_class>(*data.row_iterator) = std::get<ProductDetails::elem_t<ProductDetails::p_class>>(data.column_value);
+				mDatabaseDetailMgr->UpdateTable(nl::row_value<ProductDetails::id>(*data.row_iterator),
+					std::tuple<ProductDetails::elem_t<ProductDetails::p_class>>(std::get<ProductDetails::elem_t<ProductDetails::p_class>>(data.column_value)), ProductDetails::col_names[data.column]);
+			}
+			break;
+		case ProductDetails::active_ing:
+			if (std::holds_alternative<ProductDetails::elem_t<ProductDetails::active_ing>>(data.column_value)) {
+				nl::row_value<ProductDetails::active_ing>(*data.row_iterator) = std::get<ProductDetails::elem_t<ProductDetails::active_ing>>(data.column_value);
+				mDatabaseDetailMgr->UpdateTable(nl::row_value<ProductDetails::id>(*data.row_iterator),
+					std::tuple<ProductDetails::elem_t<ProductDetails::active_ing>>(std::get<ProductDetails::elem_t<ProductDetails::active_ing>>(data.column_value)), ProductDetails::col_names[data.column]);
+			}
+			break;
+		case ProductDetails::description:
+			if (std::holds_alternative<ProductDetails::elem_t<ProductDetails::description>>(data.column_value)) {
+				nl::row_value<ProductDetails::description>(*data.row_iterator) = std::get<ProductDetails::elem_t<ProductDetails::description>>(data.column_value);
+				mDatabaseDetailMgr->UpdateTable(nl::row_value<ProductDetails::id>(*data.row_iterator),
+					std::tuple<ProductDetails::elem_t<ProductDetails::description>>(std::get<ProductDetails::elem_t<ProductDetails::description>>(data.column_value)), ProductDetails::col_names[data.column]);
+			}
+			break;
+		case ProductDetails::dir_for_use:
+			if (std::holds_alternative<ProductDetails::elem_t<ProductDetails::dir_for_use>>(data.column_value)) {
+				nl::row_value<ProductDetails::dir_for_use>(*data.row_iterator) = std::get<ProductDetails::elem_t<ProductDetails::dir_for_use>>(data.column_value);
+				mDatabaseDetailMgr->UpdateTable(nl::row_value<ProductDetails::id>(*data.row_iterator),
+					std::tuple<ProductDetails::elem_t<ProductDetails::dir_for_use>>(std::get<ProductDetails::elem_t<ProductDetails::dir_for_use>>(data.column_value)), ProductDetails::col_names[data.column]);
+			}
+			break;
+		case ProductDetails::health_conditions:
+			if (std::holds_alternative<ProductDetails::elem_t<ProductDetails::health_conditions>>(data.column_value)) {
+				nl::row_value<ProductDetails::health_conditions>(*data.row_iterator) = std::get<ProductDetails::elem_t<ProductDetails::health_conditions>>(data.column_value);
+				mDatabaseDetailMgr->UpdateTable(nl::row_value<ProductDetails::id>(*data.row_iterator),
+					std::tuple<ProductDetails::elem_t<ProductDetails::health_conditions>>(std::get<ProductDetails::elem_t<ProductDetails::health_conditions>>(data.column_value)), ProductDetails::col_names[data.column]);
+			}
+			break;
+
+		}
+
+
+	}
+	catch (std::exception& except){
+		spdlog::get("log")->critical("Variant not the correct type, {}", except.what());
+	}
+	mModel->AddAttribute(mModified, nl::row_value<ProductDetails::id>(*data.row_iterator));
 }
 
 

@@ -12,12 +12,13 @@
 #include <spdlog/spdlog.h>
 #include <unordered_set>
 #include <unordered_map>
+#include <filesystem>
 
 
 #include "TableMonoState.h"
 #include "DataModelBase.h"
 #include "ProductView.h"
-
+namespace fs = std::filesystem;
 namespace std
 {
 	template<>
@@ -56,8 +57,8 @@ public:
 	{
 		user,
 		download,
-		folder,
-		folder_open,
+		hospital,
+		health_file,
 		action_add,
 		action_remove,
 		file
@@ -75,6 +76,7 @@ public:
 	wxTreeItemId AddToTree(wxTreeItemId parent, const std::string& name, int imageId = -1,
 		int imageIdSel = -1);
 	bool AddToViewMap(wxWindow* win, wxTreeItemId item);
+	void ImportJson(const fs::path& path);
 //tree ctrl events
 private:
 	void OnTreeItemSelectionChanging(wxTreeEvent& evt);
@@ -87,7 +89,6 @@ private:
 	void OnTreeItemGetToolTip(wxTreeEvent& evt);
 	void OnTreeItemGetInfo(wxTreeEvent& evt);
 	void OnTreeItemSetInfo(wxTreeEvent& evt);
-
 //AuiNotebook events
 private:
 	void OnBookClosed(wxAuiNotebookEvent& evt);

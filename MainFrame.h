@@ -12,6 +12,7 @@
 #include <string>
 #include <memory>
 #include <filesystem>
+#include <nlohmann/json.hpp>
 
 //nl stuff
 
@@ -27,7 +28,7 @@
 
 
 using namespace std::literals::string_literals;
-
+namespace fs = std::filesystem;
 
 class MainFrame : public wxFrame
 {
@@ -47,6 +48,7 @@ public:
 		ID_NEW_PRODUCT,
 		ID_PRODUCT_SEARCH,
 		ID_LOG,
+		ID_IMPORT_JSON,
 		ID_USER_LOG_IN,
 		ID_USER_LOG_OUT,
 		ID_USER_PROFILE,
@@ -79,7 +81,6 @@ private:
 	void Settings();
 
 	wxSize ResizeTool(const std::string& string);
-
 private:
 	std::shared_ptr<wxTextCtrl> mLogBook;
 	std::unique_ptr<wxAuiManager> mFrameManager;
@@ -97,6 +98,7 @@ private:
 	void OnAbout(wxCommandEvent& evt);
 	void OnLog(wxCommandEvent& evt);
 	void OnClose(wxCloseEvent& evt);
+	void OnImportJson(wxCommandEvent& evt);
 	void onEraseBackground(wxEraseEvent& evt);
 
 	//tool bar events

@@ -7,6 +7,7 @@ EVT_CLOSE(MainFrame::OnClose)
 EVT_ERASE_BACKGROUND(MainFrame::onEraseBackground)
 EVT_MENU(wxID_ABOUT, MainFrame::OnAbout)
 EVT_MENU(MainFrame::ID_LOG, MainFrame::OnLog)
+EVT_MENU(MainFrame::ID_IMPORT_JSON, MainFrame::OnImportJson)
 EVT_AUITOOLBAR_TOOL_DROPDOWN(MainFrame::ID_TOOL_USER, MainFrame::OnUserBtnDropDown)
 EVT_MENU(MainFrame::ID_USER_LOG_OUT, MainFrame::OnSignOut)
 END_EVENT_TABLE()
@@ -76,6 +77,7 @@ void MainFrame::CreateMenuBar()
 	wxMenuBar* menubar = new wxMenuBar;
 	wxMenu* file = new wxMenu;
 	file->Append(ID_BACK_UP_DATA, "Back up data");
+	file->Append(ID_IMPORT_JSON, "Import json data");
 
 	wxMenu* Inventory = new wxMenu;
 	Inventory->Append(ID_NEW_PRODUCT, "New product\tCtrl-D");
@@ -193,6 +195,17 @@ void MainFrame::OnClose(wxCloseEvent& event)
 	mLogBook = nullptr;
 
 	event.Skip();
+}
+
+void MainFrame::OnImportJson(wxCommandEvent& evt)
+{
+	wxFileDialog dialog(this);
+	if (dialog.ShowModal() == wxID_OK)
+	{
+		std::string filename = dialog.GetPath().ToStdString();
+		if (filename.empty()) return;
+		mViewCtrl->ImportJson(filename);
+	}
 }
 
 void MainFrame::onEraseBackground(wxEraseEvent& evt)

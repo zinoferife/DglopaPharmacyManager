@@ -184,7 +184,36 @@ public:
 		}
 		mDatabase.remove_statement(statement);
 	}
-
+	template<typename Value>
+	void InsertTable(const Value& tab)
+	{
+		static_assert(std::disjunction_v<nl::detail::is_relation<Value>, nl::detail::is_relation_row<Value, table>>, "Not a valid Value type");
+		auto insert_iter = m_statements.find("add");
+		if (insert_iter == m_statements.end()){
+			nl::query q;
+			q.insert(table::table_name);
+			values(std::make_index_sequence<table::column_count>{}, q);
+			auto statement = mDatabase.prepare_query(q);
+			if (statement == nl::database::BADSTMT) {
+				spdlog::get("log")->error("invalid query {}", q.get_query());
+				return;
+			}
+			auto [iter, inserted] = m_statements.insert({ "add", statement });
+			if (!inserted) {
+				spdlog::get("log")->error("Could not insert into m_statement cache");
+				return;
+			}
+			insert_iter = iter;
+		}
+		bool ret = insert(nl::select_all<table>{}, mDatabase, tab, insert_iter->second);
+		if (!ret){
+			spdlog::get("log")->error("insert error, {}", mDatabase.get_error_msg());
+			return;
+		}
+		else {
+			spdlog::get("log")->info("Successfully inserted into the table {}", table::table_name);
+		}
+	}
 
 //table events
 public:
