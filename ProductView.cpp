@@ -608,6 +608,11 @@ void ProductView::OnProductDetailView(wxCommandEvent& evt)
 		return;
 	}
 	mDetailView->LoadDataIntoGrid(nl::row_value<Products::id>(ProductInstance::instance()[index]));
+	if (!mPanelManager->GetPane("DetailView").IsShown()) {
+		mDetailView->Show();
+		mPanelManager->GetPane("DetailView").Show();
+	}
+	mPanelManager->Update();
 }
 
 void ProductView::DoSearch(const std::string& searchString)

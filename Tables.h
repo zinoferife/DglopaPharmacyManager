@@ -186,7 +186,7 @@ class Users : public nl::vector_table<std::uint64_t, //user_id
 	std::string, // name
 	std::string, // phone number
 	std::uint32_t, //User level
-	std::string,
+	std::string, //username
 	nl::uuid, //user_uuid
 	nl::blob_t> // password hash
 {
@@ -197,6 +197,7 @@ public:
 		COL_NAME("name")
 		COL_NAME("phone_number")
 		COL_NAME("user_level")
+		COL_NAME("user_name")
 		COL_NAME("uuid")
 		COL_NAME("password_hash")
 	END_COL_NAME()

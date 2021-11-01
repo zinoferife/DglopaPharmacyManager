@@ -34,6 +34,7 @@ MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, c
 	mLog->info("Creating Main view");
 	CreateDataView();
 
+	CreateDatabaseMgr();
 	CreateTestUser();
 
 	mFrameManager->Update();
@@ -167,9 +168,15 @@ void MainFrame::CreateTestUser()
 {
 	nl::uuid id;
 	id.generate();
-	UsersInstance::instance().add(0, "Ferife", "Zino", "09131861793", 10, "zino", id, nl::blob_t{});
-	UsersInstance::instance().add(0, "Ferife", "Othuke", "09131861793", 10, "othuke", id, nl::blob_t{});
-	UsersInstance::instance().add(0, "Ferife", "Enife", "09131861793", 10, "enife", id, nl::blob_t{});
+	Users::notification_data data;
+	data.row_iterator = UsersInstance::instance().add(GenRandomId(), "Ferife", "Zino", "09131861793", 10, "zino", id, nl::blob_t{});
+	UsersInstance::instance().notify<nl::notifications::add>(data);
+}
+
+void MainFrame::CreateDatabaseMgr()
+{
+	mUsersDatabaseMgr = std::make_unique<DatabaseManager<Users>>(UsersInstance::instance(), DatabaseInstance::instance());
+	mUsersDatabaseMgr->CreateTable();
 }
 
 void MainFrame::Settings()
@@ -220,6 +227,14 @@ void MainFrame::OnUserBtnDropDown(wxAuiToolBarEvent& evt)
 	}
 	if (!mActiveUser->IsSignedIn())
 	{
+		if (evt.IsDropDownClicked()){
+			wxMenu* menu = new wxMenu;
+			auto create_acc = menu->Append(ID_USER_CREATE_ACCOUNT, wxT("Create account"));
+			create_acc->SetBitmaps(wxArtProvider::GetBitmap("save"));
+			mToolBar->PopupMenu(menu);
+			return;
+		}
+
 		SignInDialog dialog(this, mActiveUser.get());
 		if (dialog.ShowModal() == wxID_OK) {
 			//signed in 

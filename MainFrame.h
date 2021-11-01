@@ -25,6 +25,7 @@
 #include "ArtProvider.h"
 #include "ActiveUser.h"
 #include "SignInDialog.h"
+#include "DatabaseManger.h"
 
 
 using namespace std::literals::string_literals;
@@ -77,7 +78,7 @@ private:
 	void SetMainFrameArt();
 	void CreateDataView();
 	void CreateTestUser();
-
+	void CreateDatabaseMgr();
 	void Settings();
 
 	wxSize ResizeTool(const std::string& string);
@@ -88,6 +89,7 @@ private:
 	std::shared_ptr<spdlog::logger> mLog;
 	std::unique_ptr<ActiveUser> mActiveUser;
 	std::unique_ptr<wxAuiToolBar> mToolBar;
+	std::unique_ptr<DatabaseManager<Users>> mUsersDatabaseMgr;
 
 	//holders
 	wxAuiToolBarItem* tool;
