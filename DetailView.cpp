@@ -66,6 +66,7 @@ void DetailView::CreateToolBar()
 {
 	auto tool = GetToolBar();
 	if (tool){
+		tool->SetWindowStyleFlag(wxTB_HORZ_TEXT);
 		tool->AddTool(ID_UPDATE, "Update", wxArtProvider::GetBitmap("save"));
 		tool->SetBackgroundColour(*wxWHITE);
 		tool->Realize();
@@ -116,6 +117,7 @@ void DetailView::LoadDataIntoGrid(typename Products::elem_t<Products::id> produc
 		wxMessageBox("Invalid Product selected", "DETAILS", wxICON_WARNING | wxOK);
 		return;
 	}
+	ResetModifiedFlag();
 	//assume ProductView has loaded the value into the ProductDetail table
 	auto product_detail = ProductDetailsInstance::instance().find_on<ProductDetails::id>(product_id);
 	if (product_detail == ProductDetailsInstance::instance().end()) {
@@ -171,7 +173,19 @@ void DetailView::OnUpdate(wxCommandEvent& evt)
 			iter.Next();
 		}
 		wxMessageBox(fmt::format("{} has been updated",
-			grid->GetProperty("Product name")->GetName().ToStdString()), "PRODUCT EDIT", wxICON_INFORMATION | wxOK);
+			grid->GetProperty("Product name")->GetValue().GetString().ToStdString()), "PRODUCT EDIT", wxICON_INFORMATION | wxOK);
+		grid->ClearModifiedStatus();
 		Update();
 	}
+}
+
+void DetailView::ResetModifiedFlag()
+{
+	auto grid = GetPage("Product")->GetGrid();
+	wxPropertyGridIterator iter = grid->GetIterator();
+	while (!iter.AtEnd()){
+		iter.GetProperty()->SetFlagRecursively(wxPG_PROP_MODIFIED, false);
+		iter.Next();
+	}
+	grid->ClearModifiedStatus();
 }

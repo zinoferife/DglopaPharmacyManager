@@ -20,7 +20,7 @@
 #include "Searcher.h"
 #include "DatabaseManger.h"
 #include "DetailView.h"
-
+#include "ExpiryView.h"
 
 #include <nl_uuid.h>
 
@@ -65,7 +65,8 @@ public:
 		ID_INVENTORY_VIEW_TOOL_REMOVE,
 		ID_INVENTORY_PRODUCT_NAME,
 		ID_CATEGORY_LIST_CONTROL,
-		ID_PRODUCT_CONTEXT_EDIT
+		ID_PRODUCT_CONTEXT_EDIT,
+		ID_EXPIRY_VIEW
 	};
 
 
@@ -112,7 +113,7 @@ private:
 	void OnColumnHeaderClick(wxDataViewEvent& evt);
 	void OnProductContextMenu(wxDataViewEvent& evt);
 	void OnProductDetailView(wxCommandEvent& evt);
-
+	void OnExpiryView(wxCommandEvent& evt);
 
 	void DoSearch(const std::string& searchString);
 	void DoCategorySelect(const std::string& selected_category);

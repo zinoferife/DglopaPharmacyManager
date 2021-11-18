@@ -84,6 +84,22 @@ public:
 		return true;
 	}
 
+	template<typename... Data, typename... Args>
+	bool BindOnStatement(const std::string& query, std::tuple<Data...>&& data, const Args&... args)
+	{
+		auto statment = m_statements.find(query);
+		if (statment == m_statements.end()) return false;
+		return mDatabase.bind_para(statment->second, std::move(data), args...);
+	}
+ 
+	nl::database::statement_index GetStatement(const std::string& query)
+	{
+		auto statement = m_statements.find(query);
+		if (statement == m_statements.end()){
+			return nl::database::BADSTMT;
+		}
+		return statement->second;
+	}
 //database operations
 	void CreateTable(){
 		auto create_statement = m_statements.find("create");
@@ -112,6 +128,19 @@ public:
 		}
 	}
 	
+	void CreateView(){
+		//view statements must be passed in by the user, do nothing when no view
+		auto view_statement = m_statements.find("view");
+		if (view_statement != m_statements.end()){
+			if (!mDatabase.exec_once(view_statement->second)) {
+				spdlog::get("log")->error("{}", mDatabase.get_error_msg());
+			}
+			return;
+		}	
+		spdlog::get("log")->error("No view statment");
+	}
+
+
 	void DropTable(){
 		nl::query q;
 		q.drop_table(table::table_name);
@@ -160,6 +189,15 @@ public:
 	void UnregisterNotifications(){
 		mTable.sink<nl::notifications::add>().remove_listener<DatabaseManager, & DatabaseManager::OnAddNotification>(this);
 	}
+
+	bool ExecOnce(const std::string& query) {
+		auto exec_stmt = m_statements.find(query);
+		if (exec_stmt == m_statements.end()) {
+			spdlog::get("log")->error("invalid exec query name {}", query);
+		}
+		return mDatabase.exec_once(exec_stmt->second);
+	}
+
 
 	template<typename... column_names, typename... values>
 	void UpdateTable(typename table::template elem_t<table::id> id, const std::tuple<values...>& data, const column_names& ... names){

@@ -90,6 +90,7 @@ public:
 	void LoadDataIntoGrid(typename Products::elem_t<Products::id> product_id);
  
 	void OnUpdate(wxCommandEvent& evt);
+	void ResetModifiedFlag();
 private:
 	std::unordered_map<std::string, std::function<void(const wxVariant& value)>> mPropertyToValueCallback;
 	DECLARE_EVENT_TABLE()

@@ -9,6 +9,7 @@ EVT_MENU(wxID_ABOUT, MainFrame::OnAbout)
 EVT_MENU(MainFrame::ID_LOG, MainFrame::OnLog)
 EVT_MENU(MainFrame::ID_IMPORT_JSON, MainFrame::OnImportJson)
 EVT_AUITOOLBAR_TOOL_DROPDOWN(MainFrame::ID_TOOL_USER, MainFrame::OnUserBtnDropDown)
+EVT_MENU(MainFrame::ID_USER_CREATE_ACCOUNT, MainFrame::OnCreateAccount)
 EVT_MENU(MainFrame::ID_USER_LOG_OUT, MainFrame::OnSignOut)
 END_EVENT_TABLE()
 
@@ -35,7 +36,6 @@ MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, c
 	CreateDataView();
 
 	CreateDatabaseMgr();
-	CreateTestUser();
 
 	mFrameManager->Update();
 	mLog->info("Main frame constructed sucessfully");
@@ -177,6 +177,7 @@ void MainFrame::CreateDatabaseMgr()
 {
 	mUsersDatabaseMgr = std::make_unique<DatabaseManager<Users>>(UsersInstance::instance(), DatabaseInstance::instance());
 	mUsersDatabaseMgr->CreateTable();
+	mUsersDatabaseMgr->LoadTable();
 }
 
 void MainFrame::Settings()
@@ -300,6 +301,16 @@ void MainFrame::OnSignOut(wxCommandEvent& evt)
 
 	}
 
+}
+
+void MainFrame::OnCreateAccount(wxCommandEvent& evt)
+{
+	CreateAccountDialog dialog(this, wxID_ANY);
+	if (dialog.ShowModal() == wxID_OK){
+		Users::notification_data data;
+		data.row_iterator= UsersInstance::instance().add(dialog.GetNewUser());
+		UsersInstance::instance().notify<nl::notifications::add>(data);
+	}
 }
 
 void MainFrame::OnAbout(wxCommandEvent& evt)

@@ -7,6 +7,7 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_TOOL(ProductView::ID_REMOVE_GROUP_BY, ProductView::OnResetAttributes)
 	EVT_TOOL(ProductView::ID_BACK, ProductView::OnBack)
 	EVT_TOOL(ProductView::ID_QUICK_SORT_TEST, ProductView::OnQuickSortTest)
+	EVT_TOOL(ProductView::ID_EXPIRY_VIEW, ProductView::OnExpiryView)
 	EVT_SEARCH(ProductView::ID_SEARCH, ProductView::OnSearchProduct)
 	EVT_SEARCH_CANCEL(ProductView::ID_SEARCH, ProductView::OnSearchCleared)
 	EVT_TEXT(ProductView::ID_SEARCH, ProductView::OnSearchProduct)
@@ -29,6 +30,7 @@ ProductView::ProductView()
 
 ProductView::~ProductView()
 {
+	mPanelManager->UnInit();
 	UnregisterNotification();
 	mDataView.release();
 	mInventoryView.release();
@@ -43,7 +45,7 @@ ProductView::ProductView(wxWindow* parent, wxWindowID id, const wxPoint& positio
 	SetDefaultArt();
 	CreateToolBar();
 	CreateInventoryList();
-	//should be in mainFrame
+	//should be in mainFrame?? no not really
 	CreateDatabaseMgr();
 	CreateDataView();
 	mPanelManager->Update();
@@ -89,7 +91,8 @@ void ProductView::CreateToolBar()
 			dc.DrawLabel(sel, rect, wxALIGN_CENTER);
 		}
 	});
-
+	bar->AddSeparator();
+	bar->AddTool(ID_EXPIRY_VIEW, wxEmptyString, wxArtProvider::GetBitmap("bandage"));
 	bar->AddTool(ID_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("bag"));
 	bar->AddTool(ID_REMOVE_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("minimize"));
 	bar->AddTool(ID_ADD_PRODUCT, wxEmptyString, wxArtProvider::GetBitmap("action_add"));
@@ -601,11 +604,19 @@ void ProductView::OnProductDetailView(wxCommandEvent& evt)
 		return;
 	}
 	if (!mDetailView) {
+		Freeze();
 		mDetailView = std::make_unique<DetailView>(nl::row_value<Products::id>(ProductInstance::instance()[index]),
 			this, wxID_ANY, wxDefaultPosition, wxSize(500, -1));
 		mPanelManager->AddPane(mDetailView.get(), wxAuiPaneInfo().Name("DetailView").Caption("Product edit").Right().Show());
 		mPanelManager->Update();
+		Thaw();
 		return;
+	}
+ 	if (mDetailView->IsAnyModified()){
+		//changing from the previous, but not updated changes
+		if (wxMessageBox("Changing edited product without saving changes, continue?", "EDIT PRODUCT", wxICON_WARNING | wxYES_NO) != wxYES){
+			return;
+		}
 	}
 	mDetailView->LoadDataIntoGrid(nl::row_value<Products::id>(ProductInstance::instance()[index]));
 	if (!mPanelManager->GetPane("DetailView").IsShown()) {
@@ -613,6 +624,15 @@ void ProductView::OnProductDetailView(wxCommandEvent& evt)
 		mPanelManager->GetPane("DetailView").Show();
 	}
 	mPanelManager->Update();
+}
+
+void ProductView::OnExpiryView(wxCommandEvent& evt)
+{
+	ExpiryView viewDialog(this, wxID_ANY, wxDefaultPosition, wxSize(1057, 642)); //4:3
+	if (viewDialog.ShowModal() == wxID_OK){
+		wxMessageBox("OK", "Expiry View");
+	}
+	else wxMessageBox("CANCEL", "Expiry View");
 }
 
 void ProductView::DoSearch(const std::string& searchString)
@@ -624,7 +644,7 @@ void ProductView::DoSearch(const std::string& searchString)
 
 void ProductView::DoCategorySelect(const std::string& SearchString)
 {
-	if (SearchString.empty()) return;
+	if (SearchString.empty()) return; 
 	if (SearchString == all_categories) {
 		ProductInstance::instance().notify<nl::notifications::clear>({});
 		Products::notification_data data;

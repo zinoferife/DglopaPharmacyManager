@@ -26,6 +26,7 @@
 #include "ActiveUser.h"
 #include "SignInDialog.h"
 #include "DatabaseManger.h"
+#include "CreateAccountDialog.h"
 
 
 using namespace std::literals::string_literals;
@@ -106,6 +107,7 @@ private:
 	//tool bar events
 	void OnUserBtnDropDown(wxAuiToolBarEvent& evt);
 	void OnSignOut(wxCommandEvent& evt);
+	void OnCreateAccount(wxCommandEvent& evt);
 
 private:
 	
