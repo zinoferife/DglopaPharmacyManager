@@ -6,7 +6,7 @@ END_EVENT_TABLE()
 
 
 DetailView::DetailView(typename Products::elem_t<Products::id> product_id, wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size, long style)
-: wxPropertyGridManager(parent, id, position, size, style){
+: wxPropertyGridManager(parent, id, position, size, style), mCreated(false){
 	CreatePropertyGrid(product_id);
 }
 
@@ -60,6 +60,7 @@ void DetailView::CreatePropertyGrid(typename Products::elem_t<Products::id> prod
 	CreatePropertyProductCallback(product);
 	CreatePropertyProductDetailCallback(product_detail);
 	CreateGridPageArt();
+	mCreated = true;
 }
 
 void DetailView::CreateToolBar()

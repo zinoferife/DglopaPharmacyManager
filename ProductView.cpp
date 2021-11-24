@@ -8,6 +8,8 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_TOOL(ProductView::ID_BACK, ProductView::OnBack)
 	EVT_TOOL(ProductView::ID_QUICK_SORT_TEST, ProductView::OnQuickSortTest)
 	EVT_TOOL(ProductView::ID_EXPIRY_VIEW, ProductView::OnExpiryView)
+	EVT_BUTTON(ProductView::ID_SELECT_MULTIPLE, ProductView::OnSelectMultiple)
+	EVT_BUTTON(ProductView::ID_UNSELECT_MULTIPLE, ProductView::OnUnSelectMultiple)
 	EVT_SEARCH(ProductView::ID_SEARCH, ProductView::OnSearchProduct)
 	EVT_SEARCH_CANCEL(ProductView::ID_SEARCH, ProductView::OnSearchCleared)
 	EVT_TEXT(ProductView::ID_SEARCH, ProductView::OnSearchProduct)
@@ -15,7 +17,6 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_MENU(ProductView::ID_SEARCH_BY_CATEGORY, ProductView::OnSearchFlag)
 	EVT_MENU(ProductView::ID_SEARCH_BY_PRICE, ProductView::OnSearchFlag)
 	EVT_DATAVIEW_ITEM_ACTIVATED(ProductView::ID_DATA_VIEW, ProductView::OnProductItemActivated)
-	EVT_DATAVIEW_COLUMN_HEADER_CLICK(ProductView::ID_DATA_VIEW, ProductView::OnColumnHeaderClick)
 	EVT_DATAVIEW_ITEM_CONTEXT_MENU(ProductView::ID_DATA_VIEW, ProductView::OnProductContextMenu)
 	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_EDIT, ProductView::OnProductDetailView)
 	EVT_ERASE_BACKGROUND(ProductView::OnEraseBackground)
@@ -71,7 +72,14 @@ void ProductView::CreateToolBar()
 
 	search->SetMenu(menu);
 	bar->AddControl(search);
-	
+	bar->AddSeparator();
+	auto button = new wxButton(bar, ID_SELECT_MULTIPLE, "SELECT" , wxDefaultPosition, wxDefaultSize, wxBORDER_THEME);
+	button->SetBackgroundColour(*wxWHITE);
+	auto button2 = new wxButton(bar, ID_UNSELECT_MULTIPLE, "UNSELECT" , wxDefaultPosition, wxDefaultSize, wxBORDER_THEME);
+	button2->SetBackgroundColour(*wxWHITE);
+	bar->AddControl(button);
+	bar->AddControl(button2);
+
 	wxArrayString choices;
 	choices.push_back(all_categories);
 	bar->AddStretchSpacer();
@@ -107,7 +115,7 @@ void ProductView::CreateToolBar()
 
 void ProductView::CreateInentoryToolBar()
 {
-	wxAuiToolBar* bar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW);
+	wxAuiToolBar* bar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT);
 	bar->SetToolBitmapSize(wxSize(16, 16));
 	bar->AddTool(ID_BACK, wxEmptyString, wxArtProvider::GetBitmap("arrow_back"));
 	mInventoryProductName = bar->AddTool(ID_INVENTORY_PRODUCT_NAME, wxEmptyString, wxNullBitmap);
@@ -132,19 +140,54 @@ void ProductView::CreateDataView()
 	mDataView->AppendTextColumn(ProductInstance::instance().get_name(2), 2, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
 	mDataView->AppendTextColumn(ProductInstance::instance().get_name(3), 3, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
 	mDataView->AppendTextColumn(ProductInstance::instance().get_name(4), 4, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
-	mDataView->AllowMultiColumnSort(true);
-	mDataView->ToggleSortByColumn(Products::name);
+	mDataView->AppendBitmapColumn("In Stock", 5, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_REORDERABLE);
+	mDataView->AllowMultiColumnSort(false);
+	CreateSpecialColumnHandlers();
 	wxDataViewModel* ProductModel = mModel;
 	mDataView->AssociateModel(ProductModel);
 	ProductModel->DecRef();
 	//load test
-	Products::set_default_row(100, "test", 0, 0, "0.00", 9);
 
 	mDatabaseMgr->LoadTable();
 	mDatabaseDetailMgr->LoadTable();
 	mDatabaseCatgoryMgr->LoadTable();
 	LoadCategoryToChoiceBox();
 	mPanelManager->AddPane(mDataView.get(), wxAuiPaneInfo().Name("DataView").Caption("ProductView").CenterPane());
+}
+
+void ProductView::CreateSpecialColumnHandlers()
+{
+	mModel->SetSpecialColumnHandler(5, [](size_t col, size_t row) -> wxVariant {
+		auto rowIter = ProductInstance::instance()[row];
+		if (nl::row_value<Products::stock_count>(rowIter) == 0) {
+			return wxVariant(wxArtProvider::GetBitmap("action_delete"));
+		}
+		else {
+			return wxVariant(wxArtProvider::GetBitmap("action_check"));
+		}
+		});
+
+	mModel->SetSpecialColumnHandler(6, [self = this](size_t col, size_t row)-> wxVariant {
+		if (self->mSelectedProductIndex.find(row) != self->mSelectedProductIndex.end()) {
+			return wxVariant(true);
+		}
+		else {
+			return wxVariant(false);
+		}
+		});
+
+	mModel->SetSpecialSetColumnHandler(6, [self = this](size_t col, size_t row, const wxVariant& varient) -> bool {
+		if (varient.GetBool()) {
+			spdlog::get("log")->info("Row selected {:d}", row);
+			self->mSelectedProductIndex.insert(row);
+			return false;
+		}
+		else {
+			self->mSelectedProductIndex.erase(row);
+			return false;
+		}
+	});
+
 }
 
 void ProductView::LoadCategoryToChoiceBox()
@@ -163,9 +206,11 @@ void ProductView::CreateItemAttr()
 	mInStock = std::make_shared<wxDataViewItemAttr>();
 	mExpired = std::make_shared<wxDataViewItemAttr>();
 	mModified = std::make_shared<wxDataViewItemAttr>();
+	mHeaderAttributes = std::make_shared<wxDataViewItemAttr>();
 	mInStock->SetBackgroundColour(wxTheColourDatabase->Find("Navajo_white"));
 	mExpired->SetBackgroundColour(wxTheColourDatabase->Find("Tomato"));
 	mModified->SetBold(true);
+	mHeaderAttributes->SetBackgroundColour(wxTheColourDatabase->Find("Papaya whip"));
 }
 
 void ProductView::CreateInventoryList()
@@ -342,14 +387,30 @@ void ProductView::OnRemoveProduct(wxCommandEvent& evt)
 		wxMessageBox("No product selected to remove", "Remove product", wxOK | wxICON_INFORMATION);
 		return;
 	}
-	int index = mModel->GetDataViewItemIndex(selected);
-	if (index != wxNOT_FOUND){
-		Products::notification_data data;
-		data.row_iterator = ProductInstance::instance().get_iterator(index);
-		if (wxMessageBox(fmt::format("Are you sure you want to remove \"{}\"",
-			nl::row_value<Products::name>(*data.row_iterator)), "Remove product",  wxICON_INFORMATION | wxYES_NO) == wxYES) {
-			ProductInstance::instance().notify(nl::notifications::remove, data);
-			ProductInstance::instance().del_row(data.row_iterator);
+	if (mSelectedProductIndex.empty())
+	{
+		int index = mModel->GetDataViewItemIndex(selected);
+		if (index != wxNOT_FOUND) {
+			Products::notification_data data;
+			data.row_iterator = ProductInstance::instance().get_iterator(index);
+			if (wxMessageBox(fmt::format("Are you sure you want to remove \"{}\"",
+				nl::row_value<Products::name>(*data.row_iterator)), "Remove product", wxICON_INFORMATION | wxYES_NO) == wxYES) {
+				ProductInstance::instance().notify(nl::notifications::remove, data);
+				ProductInstance::instance().del_row(data.row_iterator);
+			}
+		}
+	}
+	else{
+		auto asRef = ProductInstance::instance().isolate_column_as_ref<Products::name>();
+		wxArrayString names;
+		for (auto& i : mSelectedProductIndex) {
+			names.push_back(static_cast<std::string&>(asRef[i]));
+		}
+		ListDisplayDialog dialog(this, "Deleted Items", "Delete", names);
+		dialog.SetSize({ 700, 300 });
+		if (dialog.ShowModal() == wxID_OK) {
+			//do the delete one after the other
+			wxMessageBox("Deleted test as fake", "FAKE DELETE");
 		}
 	}
 }
@@ -535,53 +596,6 @@ void ProductView::OnProductItemActivated(wxDataViewEvent& evt)
 	}
 }
 
-void ProductView::OnColumnHeaderClick(wxDataViewEvent& evt)
-{
-	wxBusyCursor cu;
-	mDataView->Freeze();
-	auto columnIndex = evt.GetColumn();
-	int oldIndex = -1;
-	wxDataViewColumn* col = mDataView->GetSortingColumn();
-	if (col){
-		oldIndex = col->GetModelColumn();
-	}
-	col = mDataView->GetColumn(columnIndex);
-	if (columnIndex != wxNOT_FOUND){
-		if(oldIndex != -1 && oldIndex != columnIndex) mDataView->ToggleSortByColumn(oldIndex);
-		switch (columnIndex)
-		{
-		case Products::package_size:
-			mDataView->ToggleSortByColumn(Products::package_size);
-			col->SetSortOrder(!col->IsSortOrderAscending());
-			mModel->Resort();
-			break;
-		case Products::id:
-			mDataView->ToggleSortByColumn(Products::id);
-			col->SetSortOrder(!col->IsSortOrderAscending());
-			mModel->Resort();
-			break;
-		case Products::unit_price:
-			mDataView->ToggleSortByColumn(Products::unit_price);
-			col->SetSortOrder(!col->IsSortOrderAscending());
-			mModel->Resort();
-			break;
-		case Products::name:
-			mDataView->ToggleSortByColumn(Products::name);
-			col->SetSortOrder(!col->IsSortOrderAscending());
-			mModel->Resort();
-			break;
-		case Products::stock_count:
-			mDataView->ToggleSortByColumn(Products::stock_count);
-			col->SetSortOrder(!col->IsSortOrderAscending());
-			mModel->Resort();
-			break;
-		default:
-			break;
-		}
-	}
-	mDataView->Thaw();
-	mDataView->Refresh();
-}
 
 void ProductView::OnProductContextMenu(wxDataViewEvent& evt)
 {
@@ -607,6 +621,11 @@ void ProductView::OnProductDetailView(wxCommandEvent& evt)
 		Freeze();
 		mDetailView = std::make_unique<DetailView>(nl::row_value<Products::id>(ProductInstance::instance()[index]),
 			this, wxID_ANY, wxDefaultPosition, wxSize(500, -1));
+		if(!mDetailView->IsCreated()){
+			mDetailView.reset(nullptr);
+			Thaw();
+			return;
+		}
 		mPanelManager->AddPane(mDetailView.get(), wxAuiPaneInfo().Name("DetailView").Caption("Product edit").Right().Show());
 		mPanelManager->Update();
 		Thaw();
@@ -633,6 +652,37 @@ void ProductView::OnExpiryView(wxCommandEvent& evt)
 		wxMessageBox("OK", "Expiry View");
 	}
 	else wxMessageBox("CANCEL", "Expiry View");
+}
+
+void ProductView::OnSelectMultiple(wxCommandEvent& evt)
+{
+	static bool toggle = false;
+	static wxDataViewColumn* column = nullptr;
+	toggle = !toggle;
+	if (toggle){
+		column = mDataView->PrependToggleColumn(wxEmptyString, 6, wxDATAVIEW_CELL_ACTIVATABLE, -1, wxALIGN_CENTER, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_REORDERABLE);
+	}
+	else{
+		if (column)
+		{
+			mSelectedProductIndex.clear();
+			mDataView->DeleteColumn(column);
+			column = nullptr;
+		}
+	}
+}
+
+void ProductView::OnUnSelectMultiple(wxCommandEvent& evt)
+{
+	mDataView->Freeze();
+	for (auto& i : mSelectedProductIndex){
+
+		spdlog::get("log")->info(" {} index {:d}",
+			nl::row_value<Products::name>(ProductInstance::instance()[i]), i);
+	}
+	mSelectedProductIndex.clear();
+	mDataView->Thaw();
+	mDataView->Update();
 }
 
 void ProductView::DoSearch(const std::string& searchString)

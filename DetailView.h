@@ -91,7 +91,9 @@ public:
  
 	void OnUpdate(wxCommandEvent& evt);
 	void ResetModifiedFlag();
+	constexpr bool IsCreated() const { return mCreated; }
 private:
+	bool mCreated;
 	std::unordered_map<std::string, std::function<void(const wxVariant& value)>> mPropertyToValueCallback;
 	DECLARE_EVENT_TABLE()
 };

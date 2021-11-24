@@ -173,6 +173,7 @@
     <ClCompile Include="ExpiryView.cpp" />
     <ClCompile Include="InventoryDialog.cpp" />
     <ClCompile Include="InventoryView.cpp" />
+    <ClCompile Include="ListDisplayDialog.cpp" />
     <ClCompile Include="LogSink.cpp" />
     <ClCompile Include="MainFrame.cpp" />
     <ClCompile Include="MainView.cpp" />
@@ -195,6 +196,7 @@
     <ClInclude Include="Instances.h" />
     <ClInclude Include="InventoryDialog.h" />
     <ClInclude Include="InventoryView.h" />
+    <ClInclude Include="ListDisplayDialog.h" />
     <ClInclude Include="LogSink.h" />
     <ClInclude Include="MainFrame.h" />
     <ClInclude Include="MainView.h" />

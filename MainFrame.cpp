@@ -62,7 +62,7 @@ void MainFrame::CreateLogBook()
 
 void MainFrame::CreateToolBar()
 {
-	mToolBar.reset(new wxAuiToolBar(this, ID_TOOL, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW));
+	mToolBar.reset(new wxAuiToolBar(this, ID_TOOL, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT));
 	mToolBar->SetToolBitmapSize(wxSize(16, 16));
 	stretchspacer = mToolBar->AddStretchSpacer();
 
@@ -185,6 +185,7 @@ void MainFrame::Settings()
 	wxTheColourDatabase->AddColour("Aqua", wxColour(240, 255, 255));
 	wxTheColourDatabase->AddColour("Navajo_white", wxColour(255, 222, 173));
 	wxTheColourDatabase->AddColour("Tomato", wxColour(255, 99, 71));
+	wxTheColourDatabase->AddColour("Papaya whip", wxColour(255, 239, 213));
 }
 
 wxSize MainFrame::ResizeTool(const std::string& string)

@@ -28,6 +28,7 @@ class DataModel : public wxDataViewModel
 {
 	typedef typename Data::template elem_t<Data::id> id_t;
 	typedef std::unordered_map<id_t, std::shared_ptr<wxDataViewItemAttr>> itemToAttr_t;
+	typedef std::pair<std::function<wxVariant(size_t, size_t)>, std::function<bool(size_t, size_t, const wxVariant&)>> SpeicalColHandler_t;
 public:
 	DataModel(Data& instance)
 	: mData(instance), mPastLastAdded(-1){
@@ -60,7 +61,7 @@ public:
 
 	virtual int Compare(const wxDataViewItem& item1, const wxDataViewItem& item2, unsigned int column, bool ascending) const
 	{
-		if (column > GetColumnCount()) return 0;
+		if (column >= GetColumnCount()) return 0;
 		auto indexIter = mIndexMap.find(item1);
 		auto indexIter2 = mIndexMap.find(item2);
 		if (indexIter != mIndexMap.end() && indexIter2 != mIndexMap.end())
@@ -102,13 +103,15 @@ public:
 	}
 	virtual void GetValue(wxVariant& variant, const wxDataViewItem& item, unsigned int col) const
 	{
-		if (col < GetColumnCount())
+		if (item.IsOk())
 		{
-			if (item.IsOk())
-			{
-				auto indexIter = mIndexMap.find(item);
-				if (indexIter == mIndexMap.end()) return;
-				size_t index = indexIter->second;
+			auto indexIter = mIndexMap.find(item);
+			if (indexIter == mIndexMap.end()) return;
+			size_t index = indexIter->second;
+			auto speicalCol = mSpecialColHandlers.find(col);
+			if (speicalCol != mSpecialColHandlers.end() && (speicalCol->second.first != nullptr)) {
+				variant = speicalCol->second.first(col, index);
+			} else if(col < GetColumnCount()){ //column count of the underlying relation
 				variant = mData.get_as_string(index, col);
 			}
 		}
@@ -166,6 +169,20 @@ public:
 	}
 	virtual bool SetValue(const wxVariant& variant, const wxDataViewItem& item, unsigned int col)
 	{
+		if (item.IsOk())
+		{
+			auto indexIter = mIndexMap.find(item);
+			if (indexIter == mIndexMap.end()){
+				return false;
+			}
+			size_t index = indexIter->second;
+			auto specialIter = mSpecialColHandlers.find(col);
+			if (specialIter != mSpecialColHandlers.end() && (specialIter->second.second != nullptr)){
+				return specialIter->second.second(col, index, variant);
+			}
+			else if (col < GetColumnCount()){
+			}
+		}
 		return false;
 	}
 
@@ -327,11 +344,36 @@ public:
 		}
 	}
 
+	void SetSpecialColumnHandler(size_t column, std::function<wxVariant(size_t, size_t)>&& function)
+	{
+		auto [iter, inserted] = mSpecialColHandlers.insert({ column, {function, nullptr} });
+		//if insertion fails assume replacement of handlers for the column
+		if (!inserted){
+			iter->second.first = function;
+		}
+	}
 
+	void RemoveSpecialColumnHandler(size_t column)
+	{
+		mSpecialColHandlers.erase(column);
+	}
+
+	void SetSpecialSetColumnHandler(size_t column, std::function<bool(size_t, size_t, const wxVariant&)>&& function)
+	{
+		auto [iter, inserted] = mSpecialColHandlers.insert({ column, {nullptr, function} });
+		if (!inserted) {
+			iter->second.second = function;
+		}
+	}
+
+	
 protected:
 	std::unordered_map<wxDataViewItem, size_t> mIndexMap{};
-	
-	
+	//std::map<size_t, std::function<wxVariant(size_t, size_t)>> mSpecialColumns; //special columns get value funtions
+	//std::map<size_t, std::function<bool(size_t, size_t, const wxVariant&)>> mSpecialSetColumns; //speical columns set value functions
+
+	std::map<size_t, SpeicalColHandler_t> mSpecialColHandlers;
+
 	//each row can have an attribute type, 
 	itemToAttr_t mAttributeTable{};
 	Data& mData;

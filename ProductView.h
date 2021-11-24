@@ -8,6 +8,7 @@
 #include <wx/srchctrl.h>
 #include <wx/combobox.h>
 #include <wx/progdlg.h>
+#include <wx/tglbtn.h>
 
 
 
@@ -21,6 +22,8 @@
 #include "DatabaseManger.h"
 #include "DetailView.h"
 #include "ExpiryView.h"
+#include "ListDisplayDialog.h"
+
 
 #include <nl_uuid.h>
 
@@ -29,6 +32,7 @@
 
 #include <fstream>
 #include <unordered_map>
+#include <set>
 #include <bitset>
 #include <memory>
 #include <random>
@@ -66,15 +70,19 @@ public:
 		ID_INVENTORY_PRODUCT_NAME,
 		ID_CATEGORY_LIST_CONTROL,
 		ID_PRODUCT_CONTEXT_EDIT,
-		ID_EXPIRY_VIEW
+		ID_EXPIRY_VIEW,
+		ID_SELECT_MULTIPLE,
+		ID_UNSELECT_MULTIPLE
 	};
 
 
 	void ImportProductsFromJson(std::fstream& file);
+	std::set<size_t> mSelectedProductIndex;
 private: 
 	void CreateToolBar();
 	void CreateInentoryToolBar();
 	void CreateDataView();
+	void CreateSpecialColumnHandlers();
 	void LoadCategoryToChoiceBox();
 	void CreateItemAttr();
 	//test
@@ -110,10 +118,11 @@ private:
 	//data view events
 	void OnProductItemSelected(wxDataViewEvent& evt);
 	void OnProductItemActivated(wxDataViewEvent& evt);
-	void OnColumnHeaderClick(wxDataViewEvent& evt);
 	void OnProductContextMenu(wxDataViewEvent& evt);
 	void OnProductDetailView(wxCommandEvent& evt);
 	void OnExpiryView(wxCommandEvent& evt);
+	void OnSelectMultiple(wxCommandEvent& evt);
+	void OnUnSelectMultiple(wxCommandEvent& evt);
 
 	void DoSearch(const std::string& searchString);
 	void DoCategorySelect(const std::string& selected_category);
@@ -146,6 +155,7 @@ private:
 	std::shared_ptr<wxDataViewItemAttr> mInStock;
 	std::shared_ptr<wxDataViewItemAttr> mExpired;
 	std::shared_ptr<wxDataViewItemAttr> mModified;
+	std::shared_ptr<wxDataViewItemAttr> mHeaderAttributes;
 
 	wxAuiToolBarItem* mInventoryProductName;
 
