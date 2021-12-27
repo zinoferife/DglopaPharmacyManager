@@ -5,6 +5,15 @@ EVT_TOOL(DetailView::ID_UPDATE, DetailView::OnUpdate)
 END_EVENT_TABLE()
 
 
+static std::array<std::string, 3> cls{ "POM", "P", "OTC" };
+static inline int findClassIndex(const std::string& cl) {
+	//how to do this
+	for (int i = 0; i < cls.size(); i++) {
+		if (cl == cls[i]) return i;
+	}
+	return -1;
+}
+
 DetailView::DetailView(typename Products::elem_t<Products::id> product_id, wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size, long style)
 : wxPropertyGridManager(parent, id, position, size, style), mCreated(false){
 	CreatePropertyGrid(product_id);
@@ -25,6 +34,7 @@ void DetailView::CreatePropertyGrid(typename Products::elem_t<Products::id> prod
 	//assume ProductView has loaded the value into the ProductDetail table
 	auto product_detail = ProductDetailsInstance::instance().find_on<ProductDetails::id>(product_id);
 	if (product_detail == ProductDetailsInstance::instance().end()){
+		//load from database instead of failing
 		wxMessageBox("Invalid product selected, no product details", "DETAILS", wxICON_WARNING | wxOK);
 		return;
 	}
@@ -41,14 +51,20 @@ void DetailView::CreatePropertyGrid(typename Products::elem_t<Products::id> prod
 	//TODO: set a float validator for the unitprice string property
 
 	page->Append(new wxPropertyCategory("Product details"));
-	page->Append(new wxStringProperty("Product class", wxPG_LABEL, 
-		nl::row_value<ProductDetails::p_class>(*product_detail)))->SetHelpString("Pharamacy products are divided into POM(prescription only medicines), P(general pharmacy) and OTC(over the counter), select the class for this product");
+	
+	wxPGChoices* choices = new wxPGChoices();
+	choices->Add("POM", 0);
+	choices->Add("P", 1);
+	choices->Add("OTC", 2);
+
+	page->Append(new wxEnumProperty("Product class", wxPG_LABEL, *choices,
+		findClassIndex(nl::row_value<ProductDetails::p_class>(*product_detail))))->SetHelpString("Pharamacy products are divided into POM(prescription only medicines), P(general pharmacy) and OTC(over the counter), select the class for this product.");
 	page->Append(new wxStringProperty("Product active ingredient",
-		wxPG_LABEL, nl::row_value<ProductDetails::active_ing>(*product_detail)))->SetHelpString("The active ingredient in this medication");
+		wxPG_LABEL, nl::row_value<ProductDetails::active_ing>(*product_detail)))->SetHelpString("The active ingredient in this medication.");
 	page->Append(new wxLongStringProperty("Product description",
-		wxPG_LABEL, nl::row_value<ProductDetails::description>(*product_detail)))->SetHelpString("A detail description for this medication");
+		wxPG_LABEL, nl::row_value<ProductDetails::description>(*product_detail)))->SetHelpString("A detail description for this medication.");
 	page->Append(new wxLongStringProperty("Product direction for use", wxPG_LABEL,
-		nl::row_value<ProductDetails::dir_for_use>(*product_detail)))->SetHelpString("A detail direction of how to use the product");
+		nl::row_value<ProductDetails::dir_for_use>(*product_detail)))->SetHelpString("A detail direction of how to use the product.");
 	std::stringstream stream(nl::row_value<ProductDetails::health_conditions>(*product_detail), std::ios::in);
 	wxArrayString conditions;
 	std::string value;
@@ -56,7 +72,10 @@ void DetailView::CreatePropertyGrid(typename Products::elem_t<Products::id> prod
 		std::getline(stream, value, ',');
 		conditions.push_back(value);
 	}
-	page->Append(new wxArrayStringProperty("Health conditions", wxPG_LABEL, conditions))->SetHelpString("Some conditions that the product can be used for, aid look up by disease conditions");
+	page->Append(new wxArrayStringProperty("Health conditions", wxPG_LABEL, conditions))->SetHelpString("Some conditions that the product can be used for, aid look up by disease conditions.");
+	page->Append(new wxPropertyCategory("Product settings"));
+	page->Append(new wxIntProperty("Minimum stock count", wxPG_LABEL, nl::row_value<ProductDetails::stock_limit>(*product_detail)))->SetHelpString("Minimum stock count that should be flagged as low stock for this product.");
+
 	CreatePropertyProductCallback(product);
 	CreatePropertyProductDetailCallback(product_detail);
 	CreateGridPageArt();
@@ -97,8 +116,8 @@ void DetailView::CreatePropertyProductCallback(Products::iterator iter)
 
 void DetailView::CreatePropertyProductDetailCallback(ProductDetails::iterator iter)
 {
-	mPropertyToValueCallback.insert({ "Product class", std::bind(StringProperty<ProductDetails>, 
-		std::placeholders::_1, ProductDetails::p_class, ProductDetailsInstance::instance(), iter)});
+	mPropertyToValueCallback.insert({ "Product class", std::bind(EnumProperty<ProductDetails, decltype(cls)>, 
+		std::placeholders::_1, ProductDetails::p_class, ProductDetailsInstance::instance(), iter, cls)});
 	mPropertyToValueCallback.insert({ "Product active ingredient", std::bind(StringProperty<ProductDetails>,
 		std::placeholders::_1, ProductDetails::active_ing, ProductDetailsInstance::instance(), iter) });
 	mPropertyToValueCallback.insert({ "Product description", std::bind(StringProperty<ProductDetails>,
@@ -107,6 +126,8 @@ void DetailView::CreatePropertyProductDetailCallback(ProductDetails::iterator it
 		std::placeholders::_1, ProductDetails::dir_for_use, ProductDetailsInstance::instance(), iter) });
 	mPropertyToValueCallback.insert({ "Health conditions", std::bind(ArrayStringProperty<ProductDetails>,
 		std::placeholders::_1, ProductDetails::health_conditions, ProductDetailsInstance::instance(), iter) });
+	mPropertyToValueCallback.insert({ "Minimum stock count", std::bind(IntProperty<ProductDetails>,
+		std::placeholders::_1, ProductDetails::stock_limit, ProductDetailsInstance::instance(), iter) });
 }
 
 
@@ -146,6 +167,8 @@ void DetailView::LoadDataIntoGrid(typename Products::elem_t<Products::id> produc
 			conditions.push_back(value);
 		}
 		page->GetProperty("Health conditions")->SetValue(conditions);
+		page->GetProperty("Minimum stock count")->SetValue((int)nl::row_value<ProductDetails::stock_limit>(*product_detail));
+
 		mPropertyToValueCallback.clear();
 		CreatePropertyProductCallback(product);
 		CreatePropertyProductDetailCallback(product_detail);

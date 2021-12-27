@@ -66,6 +66,12 @@
     <ClCompile Include="ListDisplayDialog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PrescriptionView.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DispensaryView.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h">
@@ -138,6 +144,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ListDisplayDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PrescriptionView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PropertyFunctions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DispensaryView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -47,6 +47,7 @@ MainView::~MainView()
 	mTreeCtrl.release();
 	mSView.second.release();
 	mPView.second.release();
+	mPrescriptionView.second.release();
 }
 
 void MainView::CreateProductView()
@@ -75,12 +76,19 @@ void MainView::CreateSalesView()
 	mSView.second->Hide();
 }
 
+void MainView::CreatePrescriptionView()
+{
+	mPrescriptionView.second = std::make_unique<PrescriptionView>(mViewBook.get(), PRESCRIPTION_VIEW, wxDefaultPosition, wxDefaultSize);
+	mPrescriptionView.second->Hide();
+}
+
 void MainView::CreatePageBook()
 {
 	mViewBook = std::make_unique<wxAuiNotebook>(this, VIEW_BOOK, wxDefaultPosition, wxDefaultSize, wxAUI_NB_DEFAULT_STYLE | wxNO_BORDER);
 	mViewBook->SetImageList(mImageList.get());
 	CreateSalesView();
 	CreateProductView();
+	CreatePrescriptionView();
 	mViewBook->SetBackgroundColour(*wxWHITE);
 	mViewBook->ClearBackground();
 }
@@ -101,7 +109,8 @@ void MainView::CreateTreeCtrl()
 	mPView.first = AddToTree(pharmacyID, "Products", file);
 	AddToViewMap(mPView.second.get(),  mPView.first);
 	auto patientsId = AddToTree(pharmacyID, "Patients", file);
-	auto prescriptionsId = AddToTree(pharmacyID, "Prescriptions", file);
+	mPrescriptionView.first = AddToTree(pharmacyID, "Prescriptions", file);
+	AddToViewMap(mPrescriptionView.second.get(), mPrescriptionView.first);
 	auto posionId = AddToTree(pharmacyID, "Posion book", file);
 
 

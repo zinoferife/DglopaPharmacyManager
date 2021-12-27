@@ -72,7 +72,8 @@ public:
 		ID_PRODUCT_CONTEXT_EDIT,
 		ID_EXPIRY_VIEW,
 		ID_SELECT_MULTIPLE,
-		ID_UNSELECT_MULTIPLE
+		ID_UNSELECT_MULTIPLE,
+		ID_FILE
 	};
 
 
@@ -104,6 +105,7 @@ private:
 	void OnEraseBackground(wxEraseEvent& evt);
 	void OnQuickSortTest(wxCommandEvent& evt);
 	void OnBack(wxCommandEvent& evt);
+	void OnFile(wxAuiToolBarEvent& evt);
 
 	//evts for inventory view
 	void OnInventoryViewColClick(wxListEvent& evt);

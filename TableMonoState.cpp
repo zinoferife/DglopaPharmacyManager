@@ -76,11 +76,6 @@ void TableMonoState::CreatePrescriptionsTable()
 	PrescriptionInstance::instance().as<Prescriptions::id>("Prescription number");
 	PrescriptionInstance::instance().as<Prescriptions::uuid>("Prescription ID");
 	PrescriptionInstance::instance().as<Prescriptions::medication>("Medication");
-	PrescriptionInstance::instance().as<Prescriptions::dosage_form>("Dosage form");
-	PrescriptionInstance::instance().as<Prescriptions::strength>("Strength");
-	PrescriptionInstance::instance().as<Prescriptions::repeat_count_status>("Repeat");
-	PrescriptionInstance::instance().as<Prescriptions::instructions_to_take>("Instructions");
-	PrescriptionInstance::instance().as<Prescriptions::supply>("Supply");
 	PrescriptionInstance::instance().as<Prescriptions::patient_name>("Patient name");
 	PrescriptionInstance::instance().as<Prescriptions::patient_address>("Patient address");
 	PrescriptionInstance::instance().as<Prescriptions::prescriber_name>("Prescribers name");

@@ -18,6 +18,8 @@
 #include "TableMonoState.h"
 #include "DataModelBase.h"
 #include "ProductView.h"
+#include "PrescriptionView.h"
+
 namespace fs = std::filesystem;
 namespace std
 {
@@ -42,7 +44,8 @@ public:
 		TREE = wxID_HIGHEST + 500,
 		VIEW_BOOK,
 		PRODUCT_VIEW,
-		SALES_VIEW
+		SALES_VIEW,
+		PRESCRIPTION_VIEW
 	};
 
 	//font id
@@ -68,6 +71,7 @@ public:
 public:
 	void CreateProductView();
 	void CreateSalesView();
+	void CreatePrescriptionView();
 	void CreatePageBook();
 	void CreateTreeCtrl();
 	void CreateImageLists();
@@ -110,6 +114,7 @@ private:
 	std::unique_ptr<wxTreeCtrl> mTreeCtrl{};
 	std::pair<wxTreeItemId, std::unique_ptr<ProductView>> mPView{};
 	std::pair<wxTreeItemId, std::unique_ptr<wxDataViewCtrl>> mSView{};
+	std::pair<wxTreeItemId, std::unique_ptr<PrescriptionView>> mPrescriptionView{};
 
 	//for remvoing to addiing 
 	std::unordered_map<wxTreeItemId, wxWindow*> mDataViewsMap{};

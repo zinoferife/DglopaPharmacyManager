@@ -16,6 +16,7 @@ typedef nl::singleton_holder<ProductDetails> ProductDetailsInstance;
 typedef nl::singleton_holder<Users> UsersInstance;
 typedef nl::singleton_holder<Invoice> InvoiceInstance;
 typedef nl::singleton_holder<Prescriptions> PrescriptionInstance;
+typedef nl::singleton_holder<TrackList> TrackListInstance;
 typedef nl::singleton_holder<nl::database> DatabaseInstance;
 
 

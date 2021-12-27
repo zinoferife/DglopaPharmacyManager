@@ -56,7 +56,8 @@ class ProductDetails : public nl::vector_table < std::uint64_t, //prouct id
 	std::string, // product descriptions
 	std::string, // product direction for use
 	std::string, // product class
-	std::string> // health conditions 
+	std::string, //health conditions
+	std::uint32_t> //minimum stock limit 
 {
 public:
 	BEGIN_COL_NAME("ProductDetails")
@@ -66,6 +67,7 @@ public:
 		COL_NAME("product_directions_for_use")
 		COL_NAME("product_class")
 		COL_NAME("product_health_conditions")
+		COL_NAME("stock_limit")
 	END_COL_NAME()
 	IMPLEMENT_GET_COL_NAME()
 	enum
@@ -75,7 +77,8 @@ public:
 		description,
 		dir_for_use,
 		p_class,
-		health_conditions
+		health_conditions,
+		stock_limit
 	};
 };
 
@@ -264,14 +267,20 @@ public:
 class Prescriptions : public nl::vector_table<std::uint64_t, //prescription id
 	nl::uuid, //universal identifier
 	nl::date_time_t, //date issued
-	std::string, //medication
-	std::string, //dosage form
-	std::string, //strength
-	std::uint32_t, //repeat count status (if 0, its dispenced all the repeats, else reduce by one everytime it is dispenced)
-	std::string, //instructions to take
-	std::uint32_t, //supply (count of dosage forms e.g 28 tablets)
+	std::string, //medication, JSON STRING
+	/*
+	e.g
+		{
+			"medication_name": "paracetamol",
+			"dosage form: "Tablet",
+			"strength" : "500mg",
+			"Direction_for_use" : "Take two tablets when requird" 
+		}
+	*/
 	std::string, //patient name
 	std::string, //patient address
+	std::uint32_t, //patients age
+	std::string, //patients weight
 	std::string, //prescriber name e.g (Dr vivienne ferife)
 	std::string, //prescribers health center
 	std::string> // prescriber licence number
@@ -282,13 +291,10 @@ public:
 		COL_NAME("uuid")
 		COL_NAME("date_issued")
 		COL_NAME("medication")
-		COL_NAME("dosage_form")
-		COL_NAME("strength")
-		COL_NAME("repeat_count_status")
-		COL_NAME("instructions_to_take")
-		COL_NAME("supply")
 		COL_NAME("patient_name")
 		COL_NAME("patient_address")
+		COL_NAME("patient_age")
+		COL_NAME("patient_weight")
 		COL_NAME("prescriber_name")
 		COL_NAME("prescriber_health_center")
 		COL_NAME("presriber_licence_number")
@@ -300,13 +306,10 @@ public:
 		uuid,
 		date_issued,
 		medication,
-		dosage_form,
-		strength,
-		repeat_count_status,
-		instructions_to_take,
-		supply,
 		patient_name,
 		patient_address,
+		patient_age,
+		patient_weight,
 		prescriber_name,
 		prescriber_health_center,
 		prescriber_licence_number
@@ -326,6 +329,7 @@ class PharmacyCredentials : nl::vector_table < std::uint64_t,
 public:
 	BEGIN_COL_NAME("pharmacy_credentials")
 		COL_NAME("id")
+		COL_NAME("uuid")
 		COL_NAME("date_created")
 		COL_NAME("name")
 		COL_NAME("address_line")
@@ -337,6 +341,7 @@ public:
 	enum 
 	{
 		id = 0,
+		uuid,
 		date_created,
 		name,
 		address_line,

@@ -8,8 +8,9 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_TOOL(ProductView::ID_BACK, ProductView::OnBack)
 	EVT_TOOL(ProductView::ID_QUICK_SORT_TEST, ProductView::OnQuickSortTest)
 	EVT_TOOL(ProductView::ID_EXPIRY_VIEW, ProductView::OnExpiryView)
-	EVT_BUTTON(ProductView::ID_SELECT_MULTIPLE, ProductView::OnSelectMultiple)
-	EVT_BUTTON(ProductView::ID_UNSELECT_MULTIPLE, ProductView::OnUnSelectMultiple)
+	EVT_AUITOOLBAR_TOOL_DROPDOWN(ProductView::ID_FILE, ProductView::OnFile)
+	EVT_MENU(ProductView::ID_SELECT_MULTIPLE, ProductView::OnSelectMultiple)
+	EVT_MENU(ProductView::ID_UNSELECT_MULTIPLE, ProductView::OnUnSelectMultiple)
 	EVT_SEARCH(ProductView::ID_SEARCH, ProductView::OnSearchProduct)
 	EVT_SEARCH_CANCEL(ProductView::ID_SEARCH, ProductView::OnSearchCleared)
 	EVT_TEXT(ProductView::ID_SEARCH, ProductView::OnSearchProduct)
@@ -73,15 +74,9 @@ void ProductView::CreateToolBar()
 	search->SetMenu(menu);
 	bar->AddControl(search);
 	bar->AddSeparator();
-	auto button = new wxButton(bar, ID_SELECT_MULTIPLE, "SELECT" , wxDefaultPosition, wxDefaultSize, wxBORDER_THEME);
-	button->SetBackgroundColour(*wxWHITE);
-	auto button2 = new wxButton(bar, ID_UNSELECT_MULTIPLE, "UNSELECT" , wxDefaultPosition, wxDefaultSize, wxBORDER_THEME);
-	button2->SetBackgroundColour(*wxWHITE);
-	bar->AddControl(button);
-	bar->AddControl(button2);
-
 	wxArrayString choices;
 	choices.push_back(all_categories);
+	bar->AddTool(ID_FILE, wxEmptyString, wxArtProvider::GetBitmap("file"))->SetHasDropDown(true);
 	bar->AddStretchSpacer();
 	categories = new wxChoice(bar, ID_CATEGORY_LIST_CONTROL, wxDefaultPosition, wxSize(200, -1), choices);
 	categories->SetSelection(0);
@@ -136,11 +131,12 @@ void ProductView::CreateDataView()
 	//add columns
 
 	mDataView->AppendTextColumn(ProductInstance::instance().get_name(0), 0, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
-	mDataView->AppendTextColumn(ProductInstance::instance().get_name(1), 1, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
+	mDataView->AppendTextColumn(ProductInstance::instance().get_name(1), 1, wxDATAVIEW_CELL_INERT, 100, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
 	mDataView->AppendTextColumn(ProductInstance::instance().get_name(2), 2, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
 	mDataView->AppendTextColumn(ProductInstance::instance().get_name(3), 3, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
 	mDataView->AppendTextColumn(ProductInstance::instance().get_name(4), 4, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_SORTABLE | wxDATAVIEW_COL_REORDERABLE);
 	mDataView->AppendBitmapColumn("In Stock", 5, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE | wxDATAVIEW_COL_REORDERABLE);
+	
 	mDataView->AllowMultiColumnSort(false);
 	CreateSpecialColumnHandlers();
 	wxDataViewModel* ProductModel = mModel;
@@ -175,7 +171,7 @@ void ProductView::CreateSpecialColumnHandlers()
 			return wxVariant(false);
 		}
 		});
-
+	
 	mModel->SetSpecialSetColumnHandler(6, [self = this](size_t col, size_t row, const wxVariant& varient) -> bool {
 		if (varient.GetBool()) {
 			spdlog::get("log")->info("Row selected {:d}", row);
@@ -324,6 +320,7 @@ void ProductView::ImportProductsFromJson(std::fstream& file)
 				nl::row_value<ProductDetails::p_class>(product_detail) = fmt::to_string(value["Product class"]);
 				nl::row_value<ProductDetails::dir_for_use>(product_detail) = fmt::to_string(value["Direction for use"]);
 				nl::row_value<ProductDetails::health_conditions>(product_detail) = fmt::format("{}", fmt::join(value["Health tags"], ","));
+				nl::row_value<ProductDetails::stock_limit>(product_detail) = 0;
 				products.add(product);
 				products_detail.add(product_detail);
 				if (progress_value < 80) {
@@ -406,11 +403,14 @@ void ProductView::OnRemoveProduct(wxCommandEvent& evt)
 		for (auto& i : mSelectedProductIndex) {
 			names.push_back(static_cast<std::string&>(asRef[i]));
 		}
-		ListDisplayDialog dialog(this, "Deleted Items", "Delete", names);
+		ListDisplayDialog dialog(this, "Are you sure you want to delete these products", "Delete products", names);
 		dialog.SetSize({ 700, 300 });
 		if (dialog.ShowModal() == wxID_OK) {
 			//do the delete one after the other
 			wxMessageBox("Deleted test as fake", "FAKE DELETE");
+		}
+		else {
+			mSelectedProductIndex.clear();
 		}
 	}
 }
@@ -419,16 +419,13 @@ void ProductView::OnCheckInStock(wxCommandEvent& evt)
 {
 	wxBusyCursor cu;
 	mDataView->Freeze();
-	auto group = ProductInstance::instance().map_group_by<Products::stock_count>();
-	auto instockIter = group.find(0);
-	if (instockIter != group.end())
-	{
-		auto outstockvector = instockIter->second.isolate_column<Products::id>();
-		mModel->AddAttribute(mInStock, std::move(outstockvector));
-	}
-	else{
-		wxMessageBox("No product with a 0 stock count", "Stock check", wxICON_INFORMATION | wxOK);
-	}
+	auto stock_rel = ProductInstance::instance().select<Products::id, Products::stock_count>()
+		.join_on<0, 0>(ProductDetailsInstance::instance().select<ProductDetails::id, ProductDetails::stock_limit>());
+	auto ids = stock_rel.where([&](auto& row) -> bool {
+		return (nl::row_value<1>(row) <= nl::row_value<3>(row));
+	}).isolate_column<0>();
+
+	mModel->AddAttribute(mInStock, std::move(ids));
 	mDataView->Thaw();
 	mDataView->Refresh();
 }
@@ -481,6 +478,16 @@ void ProductView::OnBack(wxCommandEvent& evt)
 		mPanelManager->GetPane("Inventory").Hide();
 		mPanelManager->GetPane("DataView").Show();
 		mPanelManager->Update();
+	}
+}
+
+void ProductView::OnFile(wxAuiToolBarEvent& evt)
+{
+	if (evt.IsDropDownClicked()) {
+		wxMenu* menu = new wxMenu;
+		menu->Append(ID_SELECT_MULTIPLE, "select");
+		menu->Append(ID_UNSELECT_MULTIPLE, "unselect");
+		PopupMenu(menu);
 	}
 }
 
@@ -542,9 +549,9 @@ void ProductView::OnSearchByCategory(const std::string& SearchString)
 
 	ProductInstance::instance().notify<nl::notifications::clear>({});
 	auto ProductIndices = ProductInstance::instance()
-		.where_index<Products::category_id>([&](typename Categories::elem_t<Categories::id>& id) {
+		.where_index([&](Products::row_t& row) {
 		for (auto& i : CatIndices) {
-			if (id == nl::row_value<Categories::id>(CategoriesInstance::instance()[i])) {
+			if (nl::row_value<Products::category_id>(row) == nl::row_value<Categories::id>(CategoriesInstance::instance()[i])) {
 				return true;
 			}
 		}
@@ -708,9 +715,9 @@ void ProductView::DoCategorySelect(const std::string& SearchString)
 
 		ProductInstance::instance().notify<nl::notifications::clear>({});
 		auto ProductIndices = ProductInstance::instance()
-			.where_index<Products::category_id>([&](typename Categories::elem_t<Categories::id>& id) {
+			.where_index([&](Products::row_t& row) {
 			for (auto& i : CatIndices) {
-				if (id == nl::row_value<Categories::id>(CategoriesInstance::instance()[i])) {
+				if (nl::row_value<Products::category_id>(row) == nl::row_value<Categories::id>(CategoriesInstance::instance()[i])) {
 					return true;
 				}
 			}
@@ -858,6 +865,13 @@ void ProductView::OnProductDetailUpdateNotification(const ProductDetails::table_
 				nl::row_value<ProductDetails::health_conditions>(*data.row_iterator) = std::get<ProductDetails::elem_t<ProductDetails::health_conditions>>(data.column_value);
 				mDatabaseDetailMgr->UpdateTable(nl::row_value<ProductDetails::id>(*data.row_iterator),
 					std::tuple<ProductDetails::elem_t<ProductDetails::health_conditions>>(std::get<ProductDetails::elem_t<ProductDetails::health_conditions>>(data.column_value)), ProductDetails::col_names[data.column]);
+			}
+			break;
+		case ProductDetails::stock_limit:
+			if (std::holds_alternative<ProductDetails::elem_t<ProductDetails::stock_limit>>(data.column_value)) {
+				nl::row_value<ProductDetails::stock_limit>(*data.row_iterator) = std::get<ProductDetails::elem_t<ProductDetails::stock_limit>>(data.column_value);
+				mDatabaseDetailMgr->UpdateTable(nl::row_value<ProductDetails::id>(*data.row_iterator),
+					std::tuple<ProductDetails::elem_t<ProductDetails::stock_limit>>(std::get<ProductDetails::elem_t<ProductDetails::stock_limit>>(data.column_value)), ProductDetails::col_names[data.column]);
 			}
 			break;
 

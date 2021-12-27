@@ -265,13 +265,13 @@ bool InventoryView::OnGetItemIsChecked(long item) const
 
 void InventoryView::SetupImages()
 {
-	auto list = mProductInventoryData.where<Inventories::balance>([&](std::uint32_t b) {
-		return  b == 0;
+	auto list = mProductInventoryData.where([&](const Inventories::row_t& b) {
+		return  nl::row_value<Inventories::balance>(b) == 0;
 	}).isolate_column<Inventories::id>();
 	AddImage(std::move(list), 0);
 	
-	list = mProductInventoryData.where<Inventories::balance>([&](std::uint32_t b) {
-		return b > 0;
+	list = mProductInventoryData.where([&](const Inventories::row_t& b) {
+		return nl::row_value<Inventories::balance>(b) > 0;
 	}).isolate_column<Inventories::id>();
 	AddImage(std::move(list), 1);
 }

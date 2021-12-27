@@ -181,6 +181,15 @@ public:
 				return specialIter->second.second(col, index, variant);
 			}
 			else if (col < GetColumnCount()){
+				//write as normal text, assume the varient contains text
+				typename Data::variant_t var = variant.GetString().ToStdString();
+				mData.set_from_variant(index, col, var);
+				
+				//send update notification
+				typename Data::notification_data data;
+				data.row_iterator = mData.get_iterator(index);
+				mData.notify(nl::notifications::update, data);
+				return true;
 			}
 		}
 		return false;

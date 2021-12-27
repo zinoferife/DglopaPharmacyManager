@@ -170,6 +170,7 @@
     <ClCompile Include="CalenderDialog.cpp" />
     <ClCompile Include="CreateAccountDialog.cpp" />
     <ClCompile Include="DetailView.cpp" />
+    <ClCompile Include="DispensaryView.cpp" />
     <ClCompile Include="ExpiryView.cpp" />
     <ClCompile Include="InventoryDialog.cpp" />
     <ClCompile Include="InventoryView.cpp" />
@@ -177,6 +178,7 @@
     <ClCompile Include="LogSink.cpp" />
     <ClCompile Include="MainFrame.cpp" />
     <ClCompile Include="MainView.cpp" />
+    <ClCompile Include="PrescriptionView.cpp" />
     <ClCompile Include="ProductEntryDialog.cpp" />
     <ClCompile Include="ProductView.cpp" />
     <ClCompile Include="SignInDialog.cpp" />
@@ -192,6 +194,7 @@
     <ClInclude Include="DatabaseManger.h" />
     <ClInclude Include="DataModelBase.h" />
     <ClInclude Include="DetailView.h" />
+    <ClInclude Include="DispensaryView.h" />
     <ClInclude Include="ExpiryView.h" />
     <ClInclude Include="Instances.h" />
     <ClInclude Include="InventoryDialog.h" />
@@ -200,8 +203,10 @@
     <ClInclude Include="LogSink.h" />
     <ClInclude Include="MainFrame.h" />
     <ClInclude Include="MainView.h" />
+    <ClInclude Include="PrescriptionView.h" />
     <ClInclude Include="ProductEntryDialog.h" />
     <ClInclude Include="ProductView.h" />
+    <ClInclude Include="PropertyFunctions.h" />
     <ClInclude Include="SearchAutoComplete.h" />
     <ClInclude Include="Searcher.h" />
     <ClInclude Include="SignInDialog.h" />
