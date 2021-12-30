@@ -1,7 +1,8 @@
 #include "common.h"
 #include "PrescriptionView.h"
 BEGIN_EVENT_TABLE(PrescriptionView, wxPanel)
-EVT_TOOL(ID_ADD_PRESCRIPTION, OnAddPrescription)
+EVT_TOOL(PrescriptionView::ID_ADD_PRESCRIPTION, PrescriptionView::OnAddPrescription)
+EVT_TOOL(PrescriptionView::ID_DISPENSE, PrescriptionView::OnDispense)
 EVT_DATAVIEW_ITEM_ACTIVATED(PrescriptionView::ID_DATA_VIEW, PrescriptionView::OnPrescriptionActivated)
 EVT_TOOL(PrescriptionView::ID_BACK, PrescriptionView::OnBack)
 END_EVENT_TABLE()
@@ -13,6 +14,7 @@ PrescriptionView::PrescriptionView(wxWindow* parent, wxWindowID id, const wxPoin
 	CreateToolBar();
 	CreateTable();
 	CreateDispensaryView();
+	CreateDispensaryToolBar();
 	auto now = nl::clock::now();
 	LoadPrescriptions(now - nl::days(1), now);
 	SetDefaultAuiArt();
@@ -23,7 +25,12 @@ void PrescriptionView::CreateToolBar()
 {
 	auto bar = new wxAuiToolBar(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW);
 	bar->SetToolBitmapSize(wxSize(16, 16));
-	bar->AddTool(ID_BACK, wxEmptyString, wxArtProvider::GetBitmap("arrow_back"));
+	//search bar
+	auto search = new wxSearchCtrl(bar, ID_SEARCH, wxEmptyString, wxDefaultPosition, wxSize(300, -1), wxWANTS_CHARS);
+	search->SetDescriptiveText("Search prescription by patient name");
+	search->ShowCancelButton(true);
+	bar->AddControl(search);
+	bar->AddSeparator();
 	bar->AddStretchSpacer();
 	bar->AddTool(ID_ADD_PRESCRIPTION, wxEmptyString, wxArtProvider::GetBitmap("action_add"));
 	bar->Realize();
@@ -57,15 +64,26 @@ void PrescriptionView::CreateDispensaryView()
 	mPanelManager->Update();
 }
 
+void PrescriptionView::CreateDispensaryToolBar()
+{
+	auto bar = new wxAuiToolBar(this, ID_DISPENSARY_TOOL_BAR, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT | wxAUI_TB_OVERFLOW);
+	bar->SetToolBitmapSize(wxSize(16, 16));
+	bar->AddTool(ID_BACK, wxEmptyString, wxArtProvider::GetBitmap("arrow_back"));
+	bar->AddStretchSpacer();
+	bar->AddTool(ID_DISPENSE, "Dispense", wxArtProvider::GetBitmap("download"));
+	bar->Realize();
+	mPanelManager->AddPane(bar, wxAuiPaneInfo().Name(wxT("DispensaryToolBar")).Caption(wxT("Tool bar")).ToolbarPane().Top()
+		.Resizable().MinSize(wxSize(-1, 30)).DockFixed()
+		.LeftDockable(false).RightDockable(false).Floatable(false).BottomDockable(false).Hide());
+
+}
+
 void PrescriptionView::InitDataView()
 {
 	//create the columns For the data
 	mDataView->AppendTextColumn("Date issued", 2, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
 	mDataView->AppendTextColumn("Patient name", 4, wxDATAVIEW_CELL_INERT, 150, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
 	mDataView->AppendTextColumn("Patient Address", 5, wxDATAVIEW_CELL_INERT, 150, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
-	mDataView->AppendTextColumn("Prescriber name", 8, wxDATAVIEW_CELL_INERT, 150, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
-	mDataView->AppendTextColumn("Prescriber health care center address", 9, wxDATAVIEW_CELL_INERT, 150, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
-	mDataView->AppendTextColumn("Prescriber lincence number", 10, wxDATAVIEW_CELL_INERT, 150, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
 	mDataView->AppendTextColumn("Prescription status", 11, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
 
 	mPanelManager->AddPane(mDataView.get(), wxAuiPaneInfo().Name("DataView").Caption("Prescriptions").CenterPane());
@@ -145,16 +163,24 @@ void PrescriptionView::OnAddPrescription(wxCommandEvent& evt)
 	GenerateFakePrescription();
 }
 
+void PrescriptionView::OnDispense(wxCommandEvent& evt)
+{
+	mDispensaryView->Dispense();
+}
+
 void PrescriptionView::OnPrescriptionActivated(wxDataViewEvent& evt)
 {
 	auto item = evt.GetItem();
 	if (item.IsOk()){
 		int index = mModel->GetDataViewItemIndex(item);
+		if (index == -1) return;
 		auto& disPane = mPanelManager->GetPane("DispensaryView");
 		if (disPane.IsOk()) {
 			mPanelManager->GetPane("DataView").Hide();
+			mPanelManager->GetPane("Tool").Hide();
 			mDispensaryView->Load(PrescriptionInstance::instance().get_iterator(index));
 			disPane.Show();
+			mPanelManager->GetPane("DispensaryToolBar").Show();
 			mPanelManager->Update();
 		}
 	}
@@ -163,8 +189,11 @@ void PrescriptionView::OnPrescriptionActivated(wxDataViewEvent& evt)
 void PrescriptionView::OnBack(wxCommandEvent& evt)
 {
 	if (!mPanelManager->GetPane("DataView").IsShown()) {
+		mDispensaryView->ResetViewData();
 		mPanelManager->GetPane("DispensaryView").Hide();
+		mPanelManager->GetPane("DispensaryToolBar").Hide();
 		mPanelManager->GetPane("DataView").Show();
+		mPanelManager->GetPane("Tool").Show();
 		mPanelManager->Update();
 	}
 

@@ -4,6 +4,8 @@
 #include <wx/propgrid/manager.h>
 #include <wx/propgrid/advprops.h>
 #include <wx/notebook.h>
+#include <wx/progdlg.h>
+
 
 #include <wx/aui/aui.h>
 #include <wx/aui/framemanager.h>
@@ -21,6 +23,7 @@
 #include <sstream>
 #include <unordered_map>
 #include <functional>
+#include <chrono>
 
 
 #include "PropertyFunctions.h"
@@ -56,7 +59,8 @@ class DispensaryView : public wxPanel
 public:
 
 	enum {
-		DATA_VIEW = wxID_HIGHEST + 500
+		DATA_VIEW = wxID_HIGHEST + 500,
+		PROPERTY_MANGER
 	};
 
 	DispensaryView(wxWindow* parent, wxWindowID id);
@@ -70,9 +74,14 @@ public:
 	void CreatePropertyGrid(Prescriptions::iterator prescription);
 	void CreatePropertyGridToolBar();
 	void CreatePropertyGridArt();
-
+	void CreateEditProperty();
+	void ResetViewData();
+	void Dispense();
 
 	std::set<size_t> mSelections;
+private:
+	void OnDataViewItemSelected(wxDataViewEvent& evt);
+
 private:
 	std::unique_ptr<wxAuiManager> mPanelManager;
 	std::unique_ptr<wxDataViewCtrl> mDataView;
@@ -80,6 +89,8 @@ private:
 
 	DataModel<medications>* mDataModel;
 	medications mMedicationTable;
+
+	DECLARE_EVENT_TABLE()
 
 };
 

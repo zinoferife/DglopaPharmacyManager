@@ -26,8 +26,10 @@ public:
 		ID_DATA_VIEW = wxID_HIGHEST + 2000,
 		ID_ADD_PRESCRIPTION,
 		ID_DISPENSARY,
+		ID_DISPENSARY_TOOL_BAR,
+		ID_DISPENSE,
+		ID_SEARCH,
 		ID_BACK
-
 	};
 
 	PrescriptionView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size);
@@ -36,6 +38,7 @@ public:
 	void LoadPrescriptions(const nl::date_time_t& start, const nl::date_time_t& stop);
 	void CreateTable();
 	void CreateDispensaryView();
+	void CreateDispensaryToolBar();
 	void InitDataView();
 	void SetSpecialColumns();
 	void SetDefaultAuiArt();
@@ -47,7 +50,9 @@ private:
 	//test
 	void GenerateFakePrescription();
 	void OnAddPrescription(wxCommandEvent& evt);
-	
+	void OnDispense(wxCommandEvent& evt);
+
+
 	//evts 
 	void OnPrescriptionActivated(wxDataViewEvent& evt);
 	void OnBack(wxCommandEvent& evt);
