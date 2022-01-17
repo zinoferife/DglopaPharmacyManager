@@ -28,31 +28,10 @@
 
 #include "PropertyFunctions.h"
 #include "nlohmann/json.hpp"
+#include "LabelPrintJob.h"
 
 
 namespace js = nlohmann;
-class medications : public nl::vector_table<std::uint64_t, std::string, std::string, std::string, std::string, std::uint32_t>
-{
-public:
-	BEGIN_COL_NAME("medications")
-		COL_NAME("id")
-		COL_NAME("medication_name")
-		COL_NAME("dosage_form")
-		COL_NAME("strength")
-		COL_NAME("dir_for_use")
-		COL_NAME("quantity")
-	END_COL_NAME()
-
-	enum {
-		id = 0,
-		mediction_name,
-		dosage_form,
-		strength,
-		dir_for_use,
-		quanity
-	};
-};
-
 
 class DispensaryView : public wxPanel
 {
@@ -60,7 +39,7 @@ public:
 
 	enum {
 		DATA_VIEW = wxID_HIGHEST + 500,
-		PROPERTY_MANGER
+		PROPERTY_MANAGER
 	};
 
 	DispensaryView(wxWindow* parent, wxWindowID id);
@@ -76,19 +55,29 @@ public:
 	void CreatePropertyGridArt();
 	void CreateEditProperty();
 	void ResetViewData();
+	void ResetModifiedStatus();
 	void Dispense();
-
+	void PreviewLabel();
+	void SetUpPropertyCallBacks();
+	void UpdatePrescription();
+	//set update callback for the update
+	void OnProperyUpdate(const medications::table_t& table, const medications::notification_data& data);
 	std::set<size_t> mSelections;
 private:
 	void OnDataViewItemSelected(wxDataViewEvent& evt);
-
+	void OnPropertyChanged(wxPropertyGridEvent& evt);
+	void OnPropertyChanging(wxPropertyGridEvent& evt);
 private:
 	std::unique_ptr<wxAuiManager> mPanelManager;
 	std::unique_ptr<wxDataViewCtrl> mDataView;
 	std::unique_ptr<wxPropertyGridManager> mPropertyManager;
-
+	std::unordered_map<std::string, std::function<void(const wxVariant& value)>> mPropertyToValueCallback;
 	DataModel<medications>* mDataModel;
+	medications::iterator mSelectedMedication;
 	medications mMedicationTable;
+	Prescriptions::iterator mPrescriptionIter;
+	//edit text
+	std::string EditText(const std::string& text);
 
 	DECLARE_EVENT_TABLE()
 

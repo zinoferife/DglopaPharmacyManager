@@ -28,6 +28,7 @@ public:
 		ID_DISPENSARY,
 		ID_DISPENSARY_TOOL_BAR,
 		ID_DISPENSE,
+		ID_PREVIEW,
 		ID_SEARCH,
 		ID_BACK
 	};
@@ -51,6 +52,7 @@ private:
 	void GenerateFakePrescription();
 	void OnAddPrescription(wxCommandEvent& evt);
 	void OnDispense(wxCommandEvent& evt);
+	void OnLabelPreview(wxCommandEvent& evt);
 
 
 	//evts 

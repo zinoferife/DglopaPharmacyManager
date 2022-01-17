@@ -264,6 +264,16 @@ public:
 
 };
 /*---------------------------------------------------------------Prescriptions-------------------------------------------------------------------------*/
+
+enum class precription_state
+{
+	pending,
+	completed,
+	rejected,
+	invalid,
+	partial_completed,
+	max
+};
 class Prescriptions : public nl::vector_table<std::uint64_t, //prescription id
 	nl::uuid, //universal identifier
 	nl::date_time_t, //date issued
@@ -274,7 +284,8 @@ class Prescriptions : public nl::vector_table<std::uint64_t, //prescription id
 			"medication_name": "paracetamol",
 			"dosage form: "Tablet",
 			"strength" : "500mg",
-			"Direction_for_use" : "Take two tablets when requird" 
+			"Direction_for_use" : "Take two tablets when requird" ,
+			"Status: Dispensed" // pending, dispensed
 		}
 	*/
 	std::string, //patient name
@@ -283,7 +294,8 @@ class Prescriptions : public nl::vector_table<std::uint64_t, //prescription id
 	std::string, //patients weight
 	std::string, //prescriber name e.g (Dr vivienne ferife)
 	std::string, //prescribers health center
-	std::string> // prescriber licence number
+	std::string,
+	precription_state> // prescriber licence number
 {
 public:
 	BEGIN_COL_NAME("prescriptions")
@@ -298,6 +310,7 @@ public:
 		COL_NAME("prescriber_name")
 		COL_NAME("prescriber_health_center")
 		COL_NAME("presriber_licence_number")
+		COL_NAME("prescription_state")
 	END_COL_NAME()
 	IMPLEMENT_GET_COL_NAME()
 	enum
@@ -312,7 +325,8 @@ public:
 		patient_weight,
 		prescriber_name,
 		prescriber_health_center,
-		prescriber_licence_number
+		prescriber_licence_number,
+		prescription_state
 	};
 };
 
@@ -348,5 +362,29 @@ public:
 		address_city,
 		address_state,
 		address_country
+	};
+};
+/*---------------------------------------------------------------Medications -------------------------------------------------------------------------*/
+class medications : public nl::vector_table<std::uint64_t, std::string, std::string, std::string, std::string, std::uint32_t, std::string>
+{
+public:
+	BEGIN_COL_NAME("medications")
+		COL_NAME("id")
+		COL_NAME("medication_name")
+		COL_NAME("dosage_form")
+		COL_NAME("strength")
+		COL_NAME("dir_for_use")
+		COL_NAME("quantity")
+		COL_NAME("status")
+		END_COL_NAME()
+
+		enum {
+		id = 0,
+		mediction_name,
+		dosage_form,
+		strength,
+		dir_for_use,
+		quanity,
+		status
 	};
 };

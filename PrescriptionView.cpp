@@ -3,6 +3,7 @@
 BEGIN_EVENT_TABLE(PrescriptionView, wxPanel)
 EVT_TOOL(PrescriptionView::ID_ADD_PRESCRIPTION, PrescriptionView::OnAddPrescription)
 EVT_TOOL(PrescriptionView::ID_DISPENSE, PrescriptionView::OnDispense)
+EVT_TOOL(PrescriptionView::ID_PREVIEW, PrescriptionView::OnLabelPreview)
 EVT_DATAVIEW_ITEM_ACTIVATED(PrescriptionView::ID_DATA_VIEW, PrescriptionView::OnPrescriptionActivated)
 EVT_TOOL(PrescriptionView::ID_BACK, PrescriptionView::OnBack)
 END_EVENT_TABLE()
@@ -71,6 +72,7 @@ void PrescriptionView::CreateDispensaryToolBar()
 	bar->AddTool(ID_BACK, wxEmptyString, wxArtProvider::GetBitmap("arrow_back"));
 	bar->AddStretchSpacer();
 	bar->AddTool(ID_DISPENSE, "Dispense", wxArtProvider::GetBitmap("download"));
+	bar->AddTool(ID_PREVIEW, "Preiew label", wxArtProvider::GetBitmap("file"));
 	bar->Realize();
 	mPanelManager->AddPane(bar, wxAuiPaneInfo().Name(wxT("DispensaryToolBar")).Caption(wxT("Tool bar")).ToolbarPane().Top()
 		.Resizable().MinSize(wxSize(-1, 30)).DockFixed()
@@ -91,9 +93,11 @@ void PrescriptionView::InitDataView()
 
 void PrescriptionView::SetSpecialColumns()
 {
+	static std::array<std::string, static_cast<int>(precription_state::max)> StateToText
+	{ "PENDING", "COMPLETED", "REJECTED", "INVALID", "PARTIAL COMPLETED" };
 	//set upspecial columns
-	mModel->SetSpecialColumnHandler(11, [](size_t col, size_t index)-> wxVariant{
-		return wxVariant("PENDING");
+	mModel->SetSpecialColumnHandler(11, [&](size_t col, size_t index)-> wxVariant{
+		return wxVariant(StateToText[static_cast<int>(nl::row_value<Prescriptions::prescription_state>(PrescriptionInstance::instance()[index]))]);
 	});
 }
 
@@ -128,32 +132,35 @@ void PrescriptionView::GenerateFakePrescription()
 		{"medication_name", "Paracetamol"},
 		{"dosage_form", "Tablet"},
 		{"strength", "500mg"},
-		{"dir_for_use", "Takee 2 tablets when required"},
-		{"quantity", 30}
+		{"dir_for_use", "Take 2 tablets when required"},
+		{"quantity", 30},
+		{"status", "pending"}
 	};
 	
 	js::json med2 = {
 		{"medication_name", "Vitamin C"},
 		{"dosage_form", "Tablet"},
 		{"strength", "500mg"},
-		{"dir_for_use", "Takee 2 tablets when required"},
-		{"quantity", 30}
+		{"dir_for_use", "Take 2 tablets when required"},
+		{"quantity", 30},
+		{"status", "pending"}
 	};
 
 	js::json med3 = {
 		{"medication_name", "Aspirin"},
 		{"dosage_form", "Tablet"},
 		{"strength", "75mg"},
-		{"dir_for_use", "Takee 2 tablets when required"},
-		{"quantity", 30}
+		{"dir_for_use", "Take 2 tablets when required"},
+		{"quantity", 30},
+		{"status", "pending"}
 	};
-
-	js::json object = { med1, med2, med3 };
+	//changee from object to array
+	js::json object = js::json::array({ med1, med2, med3 });
 	std::string medications = js::to_string(object);
 	Prescriptions::notification_data data;
 	//continue here tomorrow
 	data.row_iterator = instance.add(GenRandomId(), id, nl::clock::now(), medications, "Zino ferife", "433 DBS road, Asaba, Delta state",
-		25, "36.5", "Dr Vivienne Ferife", "Federal Medical Center, Asaba, Delta state", "00098834561");
+		25, "36.5", "Dr Vivienne Ferife", "Federal Medical Center, Asaba, Delta state", "00098834561", precription_state::pending);
 	instance.notify<nl::notifications::add>(data);
 }
 
@@ -166,6 +173,11 @@ void PrescriptionView::OnAddPrescription(wxCommandEvent& evt)
 void PrescriptionView::OnDispense(wxCommandEvent& evt)
 {
 	mDispensaryView->Dispense();
+}
+
+void PrescriptionView::OnLabelPreview(wxCommandEvent& evt)
+{
+	mDispensaryView->PreviewLabel();
 }
 
 void PrescriptionView::OnPrescriptionActivated(wxDataViewEvent& evt)

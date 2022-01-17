@@ -3,6 +3,8 @@
 
 BEGIN_EVENT_TABLE(DispensaryView, wxPanel)
 EVT_DATAVIEW_SELECTION_CHANGED(DispensaryView::DATA_VIEW, DispensaryView::OnDataViewItemSelected)
+EVT_PG_CHANGED(DispensaryView::PROPERTY_MANAGER, DispensaryView::OnPropertyChanged)
+EVT_PG_CHANGING(DispensaryView::PROPERTY_MANAGER, DispensaryView::OnPropertyChanging)
 END_EVENT_TABLE()
 
 DispensaryView::DispensaryView(wxWindow* parent, wxWindowID id)
@@ -10,7 +12,9 @@ DispensaryView::DispensaryView(wxWindow* parent, wxWindowID id)
 	mPanelManager = std::make_unique<wxAuiManager>(this);
 	SetDefaultArt();
 	CreateDataView();
+	mMedicationTable.sink<nl::notifications::update>().add_listener<DispensaryView, &DispensaryView::OnProperyUpdate>(this);
 	mPanelManager->Update();
+
 }
 
 DispensaryView::~DispensaryView()
@@ -43,6 +47,7 @@ void DispensaryView::Load(Prescriptions::iterator prescription)
 	else {
 		LoadPropertyGrid(prescription);
 	}
+	mSelectedMedication = mMedicationTable.end(); //make the selection invalid
 	std::stringstream json_stream(nl::row_value<Prescriptions::medication>(*prescription), std::ios::in);
 	js::json med;
 	json_stream >> med;
@@ -51,9 +56,9 @@ void DispensaryView::Load(Prescriptions::iterator prescription)
 		return;
 	}
 	try {
-		for (auto drug = med.begin(); drug != med.end(); drug++) {
+		for (auto drug = med.begin(); drug != med.end(); (void)drug++) {
 			auto& value = drug.value();
-			mMedicationTable.add(GenRandomId(), value["medication_name"], value["dosage_form"], value["strength"], value["dir_for_use"], value["quantity"]);
+			mMedicationTable.add(GenRandomId(), value["medication_name"], value["dosage_form"], value["strength"], value["dir_for_use"], value["quantity"], value["status"]);
 		}
 	}
 	catch (js::json::type_error& error) {
@@ -64,6 +69,7 @@ void DispensaryView::Load(Prescriptions::iterator prescription)
 	medications::notification_data data;
 	data.count = mMedicationTable.size();
 	mMedicationTable.notify(nl::notifications::load, data);
+	mPrescriptionIter = prescription;
 }
 
 
@@ -92,6 +98,7 @@ void DispensaryView::CreateDataView()
 	mDataView->AppendTextColumn("Strength", 3, wxDATAVIEW_CELL_INERT, -1, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
 	mDataView->AppendTextColumn("Direction for use", 4, wxDATAVIEW_CELL_INERT, 400, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
 	mDataView->AppendTextColumn("Quantity", 5, wxDATAVIEW_CELL_INERT, 150, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
+	mDataView->AppendBitmapColumn("Status", 11, wxDATAVIEW_CELL_INERT, 150, wxALIGN_NOT, wxDATAVIEW_COL_RESIZABLE);
 	SetSpecialCol();
 
 	mPanelManager->AddPane(mDataView.get(), wxAuiPaneInfo().Name("DataView").Caption("Medications").CenterPane().PinButton());
@@ -102,6 +109,16 @@ void DispensaryView::SetSpecialCol()
 	mDataModel->SetSpecialColumnHandler(10, [self = this](size_t col, size_t row) -> wxVariant {
 		return (self->mSelections.find(row) != self->mSelections.end());
 		});
+
+	mDataModel->SetSpecialColumnHandler(11, [self = this](size_t col, size_t row) -> wxVariant {
+		auto status = nl::row_value<medications::status>(self->mMedicationTable[row]);
+		if (status == "dispensed") {
+			return wxVariant(ArtProvider::GetBitmap("action_check"));
+		}
+		else {
+			return wxVariant(ArtProvider::GetBitmap("action_remove"));
+		}
+	});
 
 	mDataModel->SetSpecialSetColumnHandler(10, [self = this](size_t col, size_t row, const wxVariant& var) ->bool {
 		if (var.GetBool()) {
@@ -119,10 +136,10 @@ void DispensaryView::SetSpecialCol()
 void DispensaryView::CreatePropertyGrid(Prescriptions::iterator prescription)
 {
 	Freeze();
-	mPropertyManager = std::make_unique<wxPropertyGridManager>(this, PROPERTY_MANGER,
+	mPropertyManager = std::make_unique<wxPropertyGridManager>(this, PROPERTY_MANAGER,
 		wxDefaultPosition, wxSize(500,-1), wxPG_BOLD_MODIFIED | wxPG_SPLITTER_AUTO_CENTER | wxPG_TOOLBAR | wxPGMAN_DEFAULT_STYLE);
 	CreatePropertyGridToolBar();
-	auto page = mPropertyManager->AddPage("Prescription detail", wxArtProvider::GetBitmap("action_check"));
+	auto page = mPropertyManager->AddPage("Prescription detail", wxArtProvider::GetBitmap("user"));
 	page->Append(new wxPropertyCategory("Patient details"));
 	page->Append(new wxStringProperty("Patients name", wxPG_LABEL, nl::row_value<Prescriptions::patient_name>(*prescription)));
 	page->Append(new wxIntProperty("Patients age", wxPG_LABEL, nl::row_value<Prescriptions::patient_age>(*prescription)));
@@ -205,21 +222,126 @@ void DispensaryView::ResetViewData()
 	mMedicationTable.notify<nl::notifications::clear>(data);
 }
 
+void DispensaryView::ResetModifiedStatus()
+{
+	auto grid = mPropertyManager->GetPage("Prescription edit")->GetGrid();
+	wxPropertyGridIterator iter = grid->GetIterator();
+	while (!iter.AtEnd()) {
+		iter.GetProperty()->SetFlagRecursively(wxPG_PROP_MODIFIED, false);
+		iter.Next();
+	}
+	grid->ClearModifiedStatus();
+}
+
 void DispensaryView::Dispense()
 {
 	if (mSelections.empty()) { 
 		wxMessageBox("No item selected to be dispensed", "DISPENSARY", wxOK | wxICON_INFORMATION);
 		return; 
 	}
-	wxProgressDialog dialog("DISPENSARY", fmt::format("Dispensing {:d} drugs", mSelections.size()), 100, this, wxPD_SMOOTH);
-	int update_value = (int)(100 / mSelections.size());
-	int update = 0;
-	for (auto index : mSelections) {
-		update += update_value;
-		dialog.Update(update, fmt::format("Dispensing {}", nl::row_value<medications::mediction_name>(mMedicationTable[index])));
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	medications selectedMeds;
+	for (auto i : mSelections){
+		selectedMeds.push_back(mMedicationTable[i]);
+		nl::row_value<medications::status>(mMedicationTable[i]) = "dispensed";
 	}
-	dialog.Update(100, "Drugs dispensed");
+	auto labels = std::make_shared<LabelPrintJob>(selectedMeds);
+	labels->SetPatientName(mPropertyManager->GetProperty("Patients name")->GetValue().GetString().ToStdString());
+	PrinterInstance::instance().PushPrintJob(labels);
+	PrinterInstance::instance().PrintJob(this);
+	UpdatePrescription();
+}
+
+void DispensaryView::PreviewLabel()
+{
+	if (mSelections.empty()) {
+		wxMessageBox("No item selected to be dispensed", "DISPENSARY", wxOK | wxICON_INFORMATION);
+		return;
+	}
+	medications selectedMeds;
+	for (auto i : mSelections) {
+		selectedMeds.push_back(mMedicationTable[i]);
+	}
+	auto labels = std::make_shared<LabelPrintJob>(selectedMeds);
+	labels->SetPatientName(mPropertyManager->GetProperty("Patients name")->GetValue().GetString().ToStdString());
+	PrinterInstance::instance().PushPrintJob(labels);
+	//wxWidget preview is weird, 
+	PrinterInstance::instance().Preview(this, new LabelPrintJob(*labels), new LabelPrintJob(*labels));
+}
+
+void DispensaryView::SetUpPropertyCallBacks()
+{
+	mPropertyToValueCallback.insert({ "Medication", std::bind(StringProperty<medications>, std::placeholders::_1, medications::mediction_name, mMedicationTable, mSelectedMedication) });
+	mPropertyToValueCallback.insert({ "Dosage form", std::bind(StringProperty<medications>, std::placeholders::_1, medications::dosage_form, mMedicationTable, mSelectedMedication) });
+	mPropertyToValueCallback.insert({ "Strength", std::bind(StringProperty<medications>, std::placeholders::_1, medications::strength, mMedicationTable, mSelectedMedication) });
+	mPropertyToValueCallback.insert({ "Direction for use", std::bind(StringProperty<medications>, std::placeholders::_1, medications::dir_for_use, mMedicationTable, mSelectedMedication) });
+	mPropertyToValueCallback.insert({ "Quantity", std::bind(IntProperty<medications>, std::placeholders::_1, medications::quanity, mMedicationTable, mSelectedMedication) });
+}
+
+void DispensaryView::UpdatePrescription()
+{
+	if (mSelections.size() == mMedicationTable.size()) {
+		nl::row_value<Prescriptions::prescription_state>(*mPrescriptionIter) = precription_state::completed;
+	}
+	else {
+		nl::row_value<Prescriptions::prescription_state>(*mPrescriptionIter) = precription_state::partial_completed;
+	}
+
+	js::json object;
+	std::stringstream stream;
+	for (auto& med : mMedicationTable) {
+		//update the medications in the 
+		js::json medJson;
+		medJson["medication_name"] = nl::row_value<medications::mediction_name>(med);
+		medJson["dosage_form"] = nl::row_value<medications::dosage_form>(med);
+		medJson["strength"] = nl::row_value<medications::strength>(med);
+		medJson["dir_for_use"] = nl::row_value<medications::dir_for_use>(med);
+		medJson["quantity"] = nl::row_value<medications::quanity>(med);
+		medJson["status"] = nl::row_value<medications::status>(med);
+		object.push_back(medJson);
+	}
+	nl::row_value<Prescriptions::medication>(*mPrescriptionIter) = js::to_string(object);
+	spdlog::get("log")->info("{}", nl::row_value<Prescriptions::medication>(*mPrescriptionIter));
+	//update the prescription table 
+}
+
+void DispensaryView::OnProperyUpdate(const medications::table_t& table, const medications::notification_data& data)
+{
+	try {
+		switch (data.column)
+		{
+		case medications::mediction_name:
+			if (std::holds_alternative<medications::elem_t<medications::mediction_name>>(data.column_value)){
+				nl::row_value<medications::mediction_name>(*data.row_iterator) = std::get<medications::elem_t<medications::mediction_name>>(data.column_value);
+			}
+			break;
+
+		case medications::dosage_form:
+			if (std::holds_alternative<medications::elem_t<medications::dosage_form>>(data.column_value)) {
+				nl::row_value<medications::dosage_form>(*data.row_iterator) = std::get<medications::elem_t<medications::dosage_form>>(data.column_value);
+			}
+			break;
+		case medications::strength:
+			if (std::holds_alternative<medications::elem_t<medications::strength>>(data.column_value)) {
+				nl::row_value<medications::strength>(*data.row_iterator) = std::get<medications::elem_t<medications::strength>>(data.column_value);
+			}
+			break;
+		case medications::dir_for_use:
+			if (std::holds_alternative<medications::elem_t<medications::dir_for_use>>(data.column_value)) {
+				nl::row_value<medications::dir_for_use>(*data.row_iterator) = std::get<medications::elem_t<medications::dir_for_use>>(data.column_value);
+			}
+			break;
+		case medications::quanity:
+			if (std::holds_alternative<medications::elem_t<medications::quanity>>(data.column_value)) {
+				nl::row_value<medications::quanity>(*data.row_iterator) = std::get<medications::elem_t<medications::quanity>>(data.column_value);
+			}
+		default:
+			break;
+		}
+	}
+	catch (std::exception& ex) {
+		spdlog::get("log")->critical("{} critical error", ex.what());
+	}
+
 }
 
 void DispensaryView::OnDataViewItemSelected(wxDataViewEvent& evt)
@@ -232,6 +354,9 @@ void DispensaryView::OnDataViewItemSelected(wxDataViewEvent& evt)
 		if (sel == mMedicationTable.end()) {
 			return;
 		}
+		mSelectedMedication = sel;
+		mPropertyToValueCallback.clear();
+		SetUpPropertyCallBacks();
 		auto edp = mPropertyManager->GetPage("Prescription edit");
 		if (edp) {
 			mPropertyManager->Freeze();
@@ -240,7 +365,33 @@ void DispensaryView::OnDataViewItemSelected(wxDataViewEvent& evt)
 			edp->GetProperty("Strength")->SetValue(nl::row_value<medications::strength>(*sel));
 			edp->GetProperty("Direction for use")->SetValue(nl::row_value < medications::dir_for_use>(*sel));
 			edp->GetProperty("Quantity")->SetValue(static_cast<std::int32_t>(nl::row_value<medications::quanity>(*sel)));
+			ResetModifiedStatus();
 			mPropertyManager->Thaw();
 		}
 	}
+}
+
+void DispensaryView::OnPropertyChanged(wxPropertyGridEvent& evt)
+{
+	auto iter = mPropertyToValueCallback.find(evt.GetPropertyName().ToStdString());
+	if (iter != mPropertyToValueCallback.end()) {
+		spdlog::get("log")->info("Changed: {}", evt.GetPropertyName().ToStdString());
+		iter->second(evt.GetValue());
+	}
+}
+
+void DispensaryView::OnPropertyChanging(wxPropertyGridEvent& evt)
+{
+	spdlog::get("log")->info("Changing: {}", evt.GetPropertyName().ToStdString());
+	auto prop = evt.GetProperty();
+	if(prop){
+		if (evt.GetPropertyName() == "Direction for use") {
+			prop->SetValue(wxVariant(EditText(evt.GetValue().GetString().ToStdString())));
+		}
+	}
+}
+
+std::string DispensaryView::EditText(const std::string& text)
+{
+	return std::string("This is a test");
 }
