@@ -29,6 +29,7 @@
 #include "PropertyFunctions.h"
 #include "nlohmann/json.hpp"
 #include "LabelPrintJob.h"
+#include "ListDisplayDialog.h"
 
 
 namespace js = nlohmann;
@@ -58,6 +59,7 @@ public:
 	void ResetModifiedStatus();
 	void Dispense();
 	void PreviewLabel();
+	bool CheckDispensed();
 	void SetUpPropertyCallBacks();
 	void UpdatePrescription();
 	//set update callback for the update

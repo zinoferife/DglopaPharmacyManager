@@ -31,9 +31,9 @@ void DispensaryView::SetDefaultArt()
 	art->SetMetric(wxAUI_DOCKART_CAPTION_SIZE, 24);
 	art->SetMetric(wxAUI_DOCKART_GRIPPER_SIZE, 5);
 	art->SetMetric(wxAUI_DOCKART_SASH_SIZE, 5);
-	art->SetColour(wxAUI_DOCKART_SASH_COLOUR, *wxWHITE);
+	art->SetColour(wxAUI_DOCKART_SASH_COLOUR, colour);
 	art->SetColour(wxAUI_DOCKART_BACKGROUND_COLOUR, colour);
-	art->SetColour(wxAUI_DOCKART_BORDER_COLOUR, *wxWHITE);
+	art->SetColour(wxAUI_DOCKART_BORDER_COLOUR, colour);
 	art->SetMetric(wxAUI_DOCKART_PANE_BORDER_SIZE, 0);
 	art->SetMetric(wxAUI_DOCKART_GRADIENT_TYPE, wxAUI_GRADIENT_HORIZONTAL);
 	mPanelManager->SetFlags(mPanelManager->GetFlags() | wxAUI_MGR_ALLOW_ACTIVE_PANE | wxAUI_MGR_VENETIAN_BLINDS_HINT);
@@ -240,9 +240,19 @@ void DispensaryView::Dispense()
 		return; 
 	}
 	medications selectedMeds;
-	for (auto i : mSelections){
-		selectedMeds.push_back(mMedicationTable[i]);
-		nl::row_value<medications::status>(mMedicationTable[i]) = "dispensed";
+	if (CheckDispensed()) {
+		for (auto i : mSelections) {
+			selectedMeds.push_back(mMedicationTable[i]);
+			nl::row_value<medications::status>(mMedicationTable[i]) = "dispensed";
+		}
+	}
+	else {
+		for (auto i : mSelections) {
+			if (nl::row_value<medications::status>(mMedicationTable[i]) != "dispensed") {
+				selectedMeds.push_back(mMedicationTable[i]);
+				nl::row_value<medications::status>(mMedicationTable[i]) = "dispensed";
+			}
+		}
 	}
 	auto labels = std::make_shared<LabelPrintJob>(selectedMeds);
 	labels->SetPatientName(mPropertyManager->GetProperty("Patients name")->GetValue().GetString().ToStdString());
@@ -266,6 +276,25 @@ void DispensaryView::PreviewLabel()
 	PrinterInstance::instance().PushPrintJob(labels);
 	//wxWidget preview is weird, 
 	PrinterInstance::instance().Preview(this, new LabelPrintJob(*labels), new LabelPrintJob(*labels));
+}
+
+bool DispensaryView::CheckDispensed()
+{
+	wxArrayString medNames;
+	for (auto& medIndex : mSelections){
+		auto& med = mMedicationTable[medIndex];
+		if (nl::row_value<medications::status>(med) == "dispensed") {
+			medNames.push_back(nl::row_value<medications::mediction_name>(med));
+		}
+	}
+	if (medNames.empty()) return false;
+	ListDisplayDialog dialog(this, "The Following medications were already dispensed, do you want to dispense them again?", "Already dispensed", medNames);
+	if (dialog.ShowModal() == wxID_OK) {
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 
 void DispensaryView::SetUpPropertyCallBacks()

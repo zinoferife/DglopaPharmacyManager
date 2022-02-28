@@ -3,6 +3,7 @@
 #include <wx/panel.h>
 #include <wx/treebook.h>
 #include <wx/dataview.h>
+#include <wx/aui/framemanager.h>
 #include <wx/aui/auibook.h>
 #include <wx/aui/tabart.h>
 #include <wx/treectrl.h>
@@ -77,6 +78,8 @@ public:
 	void CreateImageLists();
 	void SetDefaultArt();
 	void SetUpFonts();
+	void SetMainViewLayout();
+	void ShowModuleSelect();
 	wxTreeItemId AddToTree(wxTreeItemId parent, const std::string& name, int imageId = -1,
 		int imageIdSel = -1);
 	bool AddToViewMap(wxWindow* win, wxTreeItemId item);
@@ -109,7 +112,7 @@ private:
 
 private:
 	//page id, to dataView control
-	
+	std::unique_ptr<wxAuiManager> mMainViewManager;
 	std::unique_ptr<wxAuiNotebook> mViewBook{};
 	std::unique_ptr<wxTreeCtrl> mTreeCtrl{};
 	std::pair<wxTreeItemId, std::unique_ptr<ProductView>> mPView{};

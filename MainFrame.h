@@ -31,6 +31,7 @@
 
 using namespace std::literals::string_literals;
 namespace fs = std::filesystem;
+namespace js = nlohmann;
 
 class MainFrame : public wxFrame
 {
@@ -50,6 +51,7 @@ public:
 		ID_NEW_PRODUCT,
 		ID_PRODUCT_SEARCH,
 		ID_LOG,
+		ID_MODULE,
 		ID_IMPORT_JSON,
 		ID_USER_LOG_IN,
 		ID_USER_LOG_OUT,
@@ -100,6 +102,7 @@ private:
 private:
 	void OnAbout(wxCommandEvent& evt);
 	void OnLog(wxCommandEvent& evt);
+	void OnModule(wxCommandEvent& evt);
 	void OnClose(wxCloseEvent& evt);
 	void OnImportJson(wxCommandEvent& evt);
 	void onEraseBackground(wxEraseEvent& evt);

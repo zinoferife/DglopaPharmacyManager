@@ -7,6 +7,7 @@ EVT_CLOSE(MainFrame::OnClose)
 EVT_ERASE_BACKGROUND(MainFrame::onEraseBackground)
 EVT_MENU(wxID_ABOUT, MainFrame::OnAbout)
 EVT_MENU(MainFrame::ID_LOG, MainFrame::OnLog)
+EVT_MENU(MainFrame::ID_MODULE, MainFrame::OnModule)
 EVT_MENU(MainFrame::ID_IMPORT_JSON, MainFrame::OnImportJson)
 EVT_AUITOOLBAR_TOOL_DROPDOWN(MainFrame::ID_TOOL_USER, MainFrame::OnUserBtnDropDown)
 EVT_MENU(MainFrame::ID_USER_CREATE_ACCOUNT, MainFrame::OnCreateAccount)
@@ -86,6 +87,7 @@ void MainFrame::CreateMenuBar()
 
 	wxMenu* views = new wxMenu;
 	views->Append(ID_LOG, "Log");
+	views->Append(ID_MODULE, "Modules");
 
 	wxMenu* Help = new wxMenu;
 	Help->Append(wxID_ABOUT);
@@ -331,6 +333,13 @@ void MainFrame::OnLog(wxCommandEvent& evt)
 	if (logPane.IsOk() && !logPane.IsShown()){
 		logPane.Show();
 		mFrameManager->Update();
+	}
+}
+
+void MainFrame::OnModule(wxCommandEvent& evt)
+{
+	if (mViewCtrl) {
+		mViewCtrl->ShowModuleSelect();
 	}
 }
 

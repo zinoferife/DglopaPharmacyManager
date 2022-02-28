@@ -23,26 +23,24 @@ END_EVENT_TABLE()
 
 MainView::MainView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size)
 	: wxPanel(parent, id, position, size), mMainViewColour(wxColour(240, 255, 255)), mSignedIn{false}{
+	mMainViewManager = std::make_unique<wxAuiManager>(this);
 	SetDefaultArt();
 	SetUpFonts();
 	RegisterNotifications();
 	CreateImageLists();
 	CreatePageBook();
 	CreateTreeCtrl();
-
-	wxSizer* MainSizer = new wxBoxSizer(wxVERTICAL);
-	wxSizer* ViewSizer = new wxBoxSizer(wxHORIZONTAL);
-	ViewSizer->Add(mTreeCtrl.get(), wxSizerFlags().Proportion(0).Expand().Border(wxLEFT | wxTOP, 5))->SetMinSize(wxSize(200,-1));
-	ViewSizer->Add(mViewBook.get(), wxSizerFlags().Proportion(1).Expand());
-	MainSizer->Add(ViewSizer, wxSizerFlags().Proportion(1).Expand().Border(wxALL, 1));
-	SetSizer(MainSizer);
-	GetSizer()->SetSizeHints(this);
+	SetMainViewLayout();
 }
 
 MainView::~MainView()
 {
+	if (mMainViewManager) {
+		mMainViewManager->UnInit();
+	}
 	//allow the window hierarchy destory the objects
 	UnregisterNotifications();
+	mMainViewManager.release();
 	mViewBook.release();
 	mTreeCtrl.release();
 	mSView.second.release();
@@ -140,6 +138,19 @@ void MainView::CreateImageLists()
 
 void MainView::SetDefaultArt()
 {
+	wxColour colour = wxTheColourDatabase->Find("Aqua");
+	wxAuiDockArt* art = mMainViewManager->GetArtProvider();
+	art->SetMetric(wxAUI_DOCKART_CAPTION_SIZE, 24);
+	art->SetMetric(wxAUI_DOCKART_GRIPPER_SIZE, 5);
+	art->SetMetric(wxAUI_DOCKART_SASH_SIZE, 5);
+	art->SetColour(wxAUI_DOCKART_SASH_COLOUR,  colour);
+	art->SetColour(wxAUI_DOCKART_BACKGROUND_COLOUR, colour);
+	art->SetColour(wxAUI_DOCKART_BORDER_COLOUR, colour);
+	art->SetMetric(wxAUI_DOCKART_PANE_BORDER_SIZE, 0);
+	art->SetMetric(wxAUI_DOCKART_GRADIENT_TYPE, wxAUI_GRADIENT_HORIZONTAL);
+	mMainViewManager->SetFlags(mMainViewManager->GetFlags() | wxAUI_MGR_ALLOW_ACTIVE_PANE | wxAUI_MGR_VENETIAN_BLINDS_HINT);
+
+
 	SetBackgroundColour(mMainViewColour);
 	ClearBackground();
 }
@@ -156,6 +167,25 @@ void MainView::SetUpFonts()
 	mMainViewFonts[TREE_CHILD].SetFamily(wxFONTFAMILY_SWISS);
 }
 
+void MainView::SetMainViewLayout()
+{
+	mMainViewManager->AddPane(mTreeCtrl.get(), wxAuiPaneInfo().Name("TreeCtrl").Caption(wxT("Modules")).Resizable().MinSize(wxSize(200, -1))
+		.Floatable(false).Left().Hide());
+	mMainViewManager->AddPane(mViewBook.get(), wxAuiPaneInfo().Name("ViewBook").Caption(wxT("Dashborad")).CenterPane());
+
+	mMainViewManager->Update();
+
+}
+
+void MainView::ShowModuleSelect()
+{
+	auto& pane = mMainViewManager->GetPane("TreeCtrl");
+	if (pane.IsOk() && !pane.IsShown()) {
+		pane.Show();
+		mMainViewManager->Update();
+	}
+}
+
 wxTreeItemId MainView::AddToTree(wxTreeItemId parent, const std::string& name, int imageId, int imageIdSel)
 {
 	if(parent == mRootID)
@@ -170,7 +200,7 @@ wxTreeItemId MainView::AddToTree(wxTreeItemId parent, const std::string& name, i
 }
 
 bool MainView::AddToViewMap(wxWindow* win, wxTreeItemId item)
-{
+{ 
 	//win can be null pointer
 	auto [iter, inserted] = mDataViewsMap.insert({ item, win });
 	return inserted;
@@ -317,6 +347,11 @@ void MainView::OnUserNotification(const Users::table_t& table, const Users::noti
 			if (win != nullptr) {
 				mViewBook->AddPage(win, mTreeCtrl->GetItemText(mPView.first), true, mTreeCtrl->GetItemImage(mPView.first));
 			}
+		}
+		auto& pane = mMainViewManager->GetPane("TreeCtrl");
+		if (pane.IsOk()) {
+			pane.Show();
+			mMainViewManager->Update();
 		}
 		mSignedIn = true;
 	}
