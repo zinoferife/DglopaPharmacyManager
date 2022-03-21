@@ -9,7 +9,6 @@ TClient::TClient(asio::io_context& contex)
 	: mContext(contex), minitialised(false) {
 	//create a tcp socket for the client
 	mSocket = std::make_shared<asio::ip::tcp::socket>(contex);
-	InitMessageHandlers();
 }
 
 TClient::~TClient()
@@ -38,11 +37,12 @@ void TClient::Connect(const asio::ip::tcp::resolver::results_type& endpoints)
 	});
 }
 
-void TClient::SyncConnect(const asio::ip::tcp::endpoint& endpoint)
+bool TClient::SyncConnect(const asio::ip::tcp::endpoint& endpoint)
 {
 	asio::error_code ec;
 	mSocket->connect(endpoint, ec);
 	OnConnected(ec);
+	return (!(bool)ec);
 }
 
 void TClient::Open()

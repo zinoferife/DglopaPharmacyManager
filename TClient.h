@@ -27,7 +27,7 @@ class TClient : public std::enable_shared_from_this<TClient>
 		virtual ~TClient();
 		void Connect(const asio::ip::tcp::endpoint& endpoint);
 		void Connect(const asio::ip::tcp::resolver::results_type& endpoints);
-		void SyncConnect(const asio::ip::tcp::endpoint& endpoint);
+		bool SyncConnect(const asio::ip::tcp::endpoint& endpoint);
 		void Open();
 		bool IsOpen();
 		void Cancel();

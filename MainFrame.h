@@ -56,7 +56,8 @@ public:
 		ID_USER_LOG_IN,
 		ID_USER_LOG_OUT,
 		ID_USER_PROFILE,
-		ID_USER_CREATE_ACCOUNT
+		ID_USER_CREATE_ACCOUNT,
+		ID_NETWORK_SETTING
 	};
 
 	enum
@@ -83,6 +84,7 @@ private:
 	void CreateTestUser();
 	void CreateDatabaseMgr();
 	void Settings();
+	
 
 	wxSize ResizeTool(const std::string& string);
 private:
@@ -112,6 +114,8 @@ private:
 	void OnSignOut(wxCommandEvent& evt);
 	void OnCreateAccount(wxCommandEvent& evt);
 
+	void OnSetUpNetworkAddress(wxCommandEvent& evt);
+	bool VerifyAddress(const std::string& address);
 private:
 	
 

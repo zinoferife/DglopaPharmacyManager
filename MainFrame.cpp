@@ -12,6 +12,7 @@ EVT_MENU(MainFrame::ID_IMPORT_JSON, MainFrame::OnImportJson)
 EVT_AUITOOLBAR_TOOL_DROPDOWN(MainFrame::ID_TOOL_USER, MainFrame::OnUserBtnDropDown)
 EVT_MENU(MainFrame::ID_USER_CREATE_ACCOUNT, MainFrame::OnCreateAccount)
 EVT_MENU(MainFrame::ID_USER_LOG_OUT, MainFrame::OnSignOut)
+EVT_MENU(MainFrame::ID_NETWORK_SETTING, MainFrame::OnSetUpNetworkAddress)
 END_EVENT_TABLE()
 
 
@@ -37,6 +38,8 @@ MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, c
 	CreateDataView();
 
 	CreateDatabaseMgr();
+	mLog->info("Starting network context");
+	NetInstance::instance().RunContext();
 
 	mFrameManager->Update();
 	mLog->info("Main frame constructed sucessfully");
@@ -89,6 +92,9 @@ void MainFrame::CreateMenuBar()
 	views->Append(ID_LOG, "Log");
 	views->Append(ID_MODULE, "Modules");
 
+	wxMenu* settings = new wxMenu;
+	settings->Append(ID_NETWORK_SETTING, "Network settings");
+
 	wxMenu* Help = new wxMenu;
 	Help->Append(wxID_ABOUT);
 
@@ -96,6 +102,7 @@ void MainFrame::CreateMenuBar()
 	menubar->Append(file, wxT("&File"));
 	menubar->Append(Inventory, wxT("&Products"));
 	menubar->Append(views, wxT("&Views"));
+	menubar->Append(settings, wxT("&Settings"));
 	menubar->Append(Help, wxT("Help"));
 	SetMenuBar(menubar);
 }
@@ -189,6 +196,7 @@ void MainFrame::Settings()
 	wxTheColourDatabase->AddColour("Tomato", wxColour(255, 99, 71));
 	wxTheColourDatabase->AddColour("Papaya whip", wxColour(255, 239, 213));
 }
+
 
 wxSize MainFrame::ResizeTool(const std::string& string)
 {
@@ -314,6 +322,55 @@ void MainFrame::OnCreateAccount(wxCommandEvent& evt)
 		data.row_iterator= UsersInstance::instance().add(dialog.GetNewUser());
 		UsersInstance::instance().notify<nl::notifications::add>(data);
 	}
+}
+
+void MainFrame::OnSetUpNetworkAddress(wxCommandEvent& evt)
+{
+	wxTextEntryDialog addressDialog(this, "Enter a valid Address", "Network setting");
+	if (addressDialog.ShowModal() == wxID_OK) {
+		std::string address = addressDialog.GetValue().ToStdString();
+		if (VerifyAddress(address)) {
+			wxTextEntryDialog portDialog(this, "Enter a valid port", "Network Setting");
+			if (portDialog.ShowModal() == wxID_OK) {
+				std::string port = portDialog.GetValue().ToStdString();
+				try {
+					int portNum = std::stoi(port);
+					NetInstance::instance().SetServerSubscriberEndpoint({ asio::ip::address::from_string(address), 
+						static_cast<std::uint16_t>(portNum) });
+					wxMessageBox(fmt::format("Connecting to {} at port {:d}", NetInstance::instance().GetServerSubscriberEndpointAddressAsString()
+						, portNum), "Network Settings", wxICON_INFORMATION | wxOK);
+				}
+				catch (std::invalid_argument const& ex) {
+					wxMessageBox(fmt::format("Invalid port, {}", ex.what()), "Network Setting",
+						wxICON_ERROR | wxOK);
+				}
+			}
+		}
+		else {
+			wxMessageBox("Invalid network address entered", "Network Setting", wxICON_ERROR | wxOK);
+		}
+	}
+		 
+}
+
+bool MainFrame::VerifyAddress(const std::string& address)
+{
+	std::stringstream in(address, std::ios::in);
+	std::string temp;
+	int count = 0;
+	while (std::getline(in, temp, '.')) {
+		if (temp.empty()) {
+			return false;
+		}
+		for (auto& c : temp) {
+			if (!std::isdigit(c)) return false;
+		}
+		count++;
+	}
+	if (count != 4) {
+		return false;
+	}
+	return true;
 }
 
 void MainFrame::OnAbout(wxCommandEvent& evt)

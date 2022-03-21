@@ -143,9 +143,9 @@ void MainView::SetDefaultArt()
 	art->SetMetric(wxAUI_DOCKART_CAPTION_SIZE, 24);
 	art->SetMetric(wxAUI_DOCKART_GRIPPER_SIZE, 5);
 	art->SetMetric(wxAUI_DOCKART_SASH_SIZE, 5);
-	art->SetColour(wxAUI_DOCKART_SASH_COLOUR,  colour);
+	art->SetColour(wxAUI_DOCKART_SASH_COLOUR,  *wxWHITE);
 	art->SetColour(wxAUI_DOCKART_BACKGROUND_COLOUR, colour);
-	art->SetColour(wxAUI_DOCKART_BORDER_COLOUR, colour);
+	art->SetColour(wxAUI_DOCKART_BORDER_COLOUR, *wxWHITE);
 	art->SetMetric(wxAUI_DOCKART_PANE_BORDER_SIZE, 0);
 	art->SetMetric(wxAUI_DOCKART_GRADIENT_TYPE, wxAUI_GRADIENT_HORIZONTAL);
 	mMainViewManager->SetFlags(mMainViewManager->GetFlags() | wxAUI_MGR_ALLOW_ACTIVE_PANE | wxAUI_MGR_VENETIAN_BLINDS_HINT);
@@ -238,6 +238,10 @@ void MainView::OnTreeItemActivated(wxTreeEvent& evt)
 						mViewBook->AddPage(win, mTreeCtrl->GetItemText(item), true, mTreeCtrl->GetItemImage(item));
 					}
 				}
+			}
+			else {
+				auto treeText = mTreeCtrl->GetItemText(item).ToStdString();
+				wxMessageBox(fmt::format("Still working on \"{}\" page, please be patient.", treeText), "Opps", wxICON_WARNING | wxOK);
 			}
 		}
 	}else{

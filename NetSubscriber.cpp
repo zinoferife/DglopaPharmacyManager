@@ -221,6 +221,15 @@ void NetSubscriber::OnUnsubscribed(const NetMessage& message)
 	}
 }
 
+void NetSubscriber::RefreashPublisherList()
+{
+	NetMessage message;
+	message.GetJsonMessage() = {
+		{"Type", "PubList"}
+	};
+	Write(message);
+}
+
 void NetSubscriber::UnSubscribe()
 {
 	NetMessage message;

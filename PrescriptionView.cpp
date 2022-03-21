@@ -6,6 +6,7 @@ EVT_TOOL(PrescriptionView::ID_DISPENSE, PrescriptionView::OnDispense)
 EVT_TOOL(PrescriptionView::ID_PREVIEW, PrescriptionView::OnLabelPreview)
 EVT_DATAVIEW_ITEM_ACTIVATED(PrescriptionView::ID_DATA_VIEW, PrescriptionView::OnPrescriptionActivated)
 EVT_TOOL(PrescriptionView::ID_BACK, PrescriptionView::OnBack)
+EVT_TOOL(PrescriptionView::ID_SUBSCRIBE, PrescriptionView::OnSubscribe)
 END_EVENT_TABLE()
 
 
@@ -33,7 +34,8 @@ void PrescriptionView::CreateToolBar()
 	bar->AddControl(search);
 	bar->AddSeparator();
 	bar->AddStretchSpacer();
-	bar->AddTool(ID_ADD_PRESCRIPTION, wxEmptyString, wxArtProvider::GetBitmap("action_add"));
+	bar->AddTool(ID_ADD_PRESCRIPTION, wxT("Add fake prescription"), wxArtProvider::GetBitmap("action_add"));
+	bar->AddTool(ID_SUBSCRIBE, wxT("Connect"), wxArtProvider::GetBitmap("reply"));
 	bar->Realize();
 	mPanelManager->AddPane(bar, wxAuiPaneInfo().Name(wxT("Tool")).Caption(wxT("Tool bar")).ToolbarPane().Top()
 		.Resizable().MinSize(wxSize(-1, 30)).DockFixed()
@@ -178,6 +180,25 @@ void PrescriptionView::OnDispense(wxCommandEvent& evt)
 void PrescriptionView::OnLabelPreview(wxCommandEvent& evt)
 {
 	mDispensaryView->PreviewLabel();
+}
+
+void PrescriptionView::OnSubscribe(wxCommandEvent& evt)
+{
+	//
+	if (mCurrentPrescriptionSubsciber) {
+		wxMessageBox(fmt::format("Subscribed to {}", mCurrentPrescriptionSubsciber->GetPublishersIDAsString()), "Prescription Subscriber", 
+			wxICON_INFORMATION | wxOK);
+		return;
+	}
+	wxBusyCursor curosr;
+	mCurrentPrescriptionSubsciber = NetInstance::instance().CreateSubScriber("Afrobug subscriber from PharmaOffice");
+	if (!mCurrentPrescriptionSubsciber) {
+		wxMessageBox("Cannot create and connect to Afrobug Watermellon server, try again", "Prescription Subscriber", wxICON_ERROR | wxOK);
+		return;
+	}
+
+	//continue with the rest of the thing
+	
 }
 
 void PrescriptionView::OnPrescriptionActivated(wxDataViewEvent& evt)

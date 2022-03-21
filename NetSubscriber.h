@@ -21,18 +21,19 @@ public:
 	void OnUnsubscribed(const NetMessage& message);
 
 	//server list of publishers functions
-	inline constexpr bool IsServerPubliserListPresent() const { return !mPublishers.empty(); }
+	inline bool IsServerPubliserListPresent() const { return !mPublishers.empty(); }
 	inline const std::vector<boost::uuids::uuid>& GetServerPublisherList() const { return mPublishers; }
 	inline void ClearServerPublisherList() { mPublishers.clear(); }
+	void RefreashPublisherList();
 	
 	//publisher subscribed to functions;
-	inline const boost::uuids::uuid& GetPublisherID() const { return mPublisherID; }
-	inline const std::string& GetPublisherName() const { return mPublisherName; }
-	inline const js::json& GetPublisherInfo() const { return mPublisherInfo; }
-
+	inline const boost::uuids::uuid& GetPublisherID() const noexcept { return mPublisherID; }
+	inline const std::string& GetPublisherName() const noexcept { return mPublisherName; }
+	inline const js::json& GetPublisherInfo() const noexcept { return mPublisherInfo; }
+	inline std::string GetPublishersIDAsString() const { return boost::uuids::to_string(mPublisherID); }
 	//
 	void UnSubscribe();
-	inline constexpr bool IsSubscribed() const { return (mPublisherID == boost::uuids::nil_uuid()); }
+	inline bool IsSubscribed() const noexcept { return (mPublisherID == boost::uuids::nil_uuid()); }
 private:
 	//tempoary list from the server
 	std::vector<boost::uuids::uuid> mPublishers;	
@@ -42,3 +43,4 @@ private:
 	js::json mPublisherInfo;
 };
 
+typedef std::shared_ptr<NetSubscriber> NetSubscriberPtr;

@@ -95,11 +95,11 @@ void ProductView::CreateToolBar()
 		}
 	});
 	bar->AddSeparator();
-	bar->AddTool(ID_EXPIRY_VIEW, wxEmptyString, wxArtProvider::GetBitmap("bandage"));
-	bar->AddTool(ID_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("bag"));
-	bar->AddTool(ID_REMOVE_GROUP_BY, wxEmptyString, wxArtProvider::GetBitmap("minimize"));
-	bar->AddTool(ID_ADD_PRODUCT, wxEmptyString, wxArtProvider::GetBitmap("action_add"));
-	bar->AddTool(ID_REMOVE_PRODUCT, wxEmptyString, wxArtProvider::GetBitmap("action_remove"));
+	bar->AddTool(ID_EXPIRY_VIEW, wxT("Expired products"), wxArtProvider::GetBitmap("bandage"));
+	bar->AddTool(ID_GROUP_BY, wxT("Out of stock"), wxArtProvider::GetBitmap("bag"));
+	bar->AddTool(ID_REMOVE_GROUP_BY, wxT("Reset"), wxArtProvider::GetBitmap("minimize"));
+	bar->AddTool(ID_ADD_PRODUCT, wxT("Add product"), wxArtProvider::GetBitmap("action_add"));
+	bar->AddTool(ID_REMOVE_PRODUCT, wxT("Add product"), wxArtProvider::GetBitmap("action_remove"));
 
 	//realise and add to manager
 	bar->Realize();
@@ -115,8 +115,8 @@ void ProductView::CreateInentoryToolBar()
 	bar->AddTool(ID_BACK, wxEmptyString, wxArtProvider::GetBitmap("arrow_back"));
 	mInventoryProductName = bar->AddTool(ID_INVENTORY_PRODUCT_NAME, wxEmptyString, wxNullBitmap);
 	bar->AddStretchSpacer();
-	bar->AddTool(ID_INVENTORY_VIEW_TOOL_ADD, wxEmptyString, wxArtProvider::GetBitmap("action_add"));
-	bar->AddTool(ID_INVENTORY_VIEW_TOOL_REMOVE, wxEmptyString, wxArtProvider::GetBitmap("action_remove"));
+	bar->AddTool(ID_INVENTORY_VIEW_TOOL_ADD, wxT("Add inventory"), wxArtProvider::GetBitmap("action_add"));
+	bar->AddTool(ID_INVENTORY_VIEW_TOOL_REMOVE, wxT("Remove inventory"), wxArtProvider::GetBitmap("action_remove"));
 
 	bar->Realize();
 	mPanelManager->AddPane(bar, wxAuiPaneInfo().Name(wxT("InventoryTool")).Caption(wxT("Inventory tool bar")).ToolbarPane().Top()
