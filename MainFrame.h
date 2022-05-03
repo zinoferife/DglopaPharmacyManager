@@ -57,7 +57,7 @@ public:
 		ID_USER_LOG_OUT,
 		ID_USER_PROFILE,
 		ID_USER_CREATE_ACCOUNT,
-		ID_NETWORK_SETTING
+		ID_BITMAP_PLACEHOLDER
 	};
 
 	enum
@@ -95,7 +95,7 @@ private:
 	std::unique_ptr<ActiveUser> mActiveUser;
 	std::unique_ptr<wxAuiToolBar> mToolBar;
 	std::unique_ptr<DatabaseManager<Users>> mUsersDatabaseMgr;
-
+	std::unique_ptr<wxStaticBitmap> mBitMapPlaceHolder{};
 	//holders
 	wxAuiToolBarItem* tool;
 	wxAuiToolBarItem* stretchspacer;
@@ -114,8 +114,6 @@ private:
 	void OnSignOut(wxCommandEvent& evt);
 	void OnCreateAccount(wxCommandEvent& evt);
 
-	void OnSetUpNetworkAddress(wxCommandEvent& evt);
-	bool VerifyAddress(const std::string& address);
 private:
 	
 

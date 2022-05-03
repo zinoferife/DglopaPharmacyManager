@@ -9,7 +9,7 @@
 #include <wx/combobox.h>
 #include <wx/progdlg.h>
 #include <wx/tglbtn.h>
-
+#include <wx/editlbox.h>
 
 
 #include "Tables.h"
@@ -43,7 +43,7 @@ namespace js = nlohmann;
 
 class ProductView : public wxPanel
 {
-	constexpr static char all_categories[] = "All categories";
+	constexpr static char all_categories[] = "ALL CATEGORIES";
 public:
 	~ProductView();
 
@@ -70,6 +70,10 @@ public:
 		ID_INVENTORY_PRODUCT_NAME,
 		ID_CATEGORY_LIST_CONTROL,
 		ID_PRODUCT_CONTEXT_EDIT,
+		ID_PRODUCT_CONTEXT_REMOVE,
+		ID_PRODUCT_CONTEXT_EXPORT,
+		ID_PRODUCT_CONTEXT_EXPORT_JSON,
+		ID_PRODUCT_CONTEXT_EDIT_BOX,
 		ID_EXPIRY_VIEW,
 		ID_SELECT_MULTIPLE,
 		ID_UNSELECT_MULTIPLE,
@@ -90,6 +94,7 @@ private:
 	void CreateInventoryList();
 	void CreateDatabaseMgr();
 
+
 	void CreateInventory(std::uint64_t product_id);
 	void SetDefaultArt();
 	void ShowInventoryToolBar(const Products::row_t& row);
@@ -107,6 +112,7 @@ private:
 	void OnBack(wxCommandEvent& evt);
 	void OnFile(wxAuiToolBarEvent& evt);
 
+	
 	//evts for inventory view
 	void OnInventoryViewColClick(wxListEvent& evt);
 	void OnInventoryAddTool(wxCommandEvent& evt);
@@ -125,6 +131,8 @@ private:
 	void OnExpiryView(wxCommandEvent& evt);
 	void OnSelectMultiple(wxCommandEvent& evt);
 	void OnUnSelectMultiple(wxCommandEvent& evt);
+	void OnPaneClose(wxAuiManagerEvent& evt);
+	void OnProductExportJson(wxCommandEvent& evt);
 
 	void DoSearch(const std::string& searchString);
 	void DoCategorySelect(const std::string& selected_category);
@@ -147,7 +155,7 @@ private:
 	std::unique_ptr<DatabaseManager<Categories>> mDatabaseCatgoryMgr;
 	std::unique_ptr<DatabaseManager<ProductDetails>> mDatabaseDetailMgr;
 	std::unique_ptr<DetailView> mDetailView;
-
+	std::unique_ptr<wxEditableListBox> mEditBox;
 
 	DataModel<Products>* mModel;
 	wxAuiToolBar* bar;

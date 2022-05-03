@@ -14,7 +14,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <filesystem>
-
+#include <tuple_buffer.h>
 
 #include "TableMonoState.h"
 #include "DataModelBase.h"
@@ -109,6 +109,9 @@ private:
 	void UnregisterNotifications();
 
 	void OnUserNotification(const Users::table_t& table, const Users::notification_data& data);
+
+	//testing  tuple_buffer
+	void TestTupleBuffer();
 
 private:
 	//page id, to dataView control

@@ -6,7 +6,6 @@ EVT_TOOL(PrescriptionView::ID_DISPENSE, PrescriptionView::OnDispense)
 EVT_TOOL(PrescriptionView::ID_PREVIEW, PrescriptionView::OnLabelPreview)
 EVT_DATAVIEW_ITEM_ACTIVATED(PrescriptionView::ID_DATA_VIEW, PrescriptionView::OnPrescriptionActivated)
 EVT_TOOL(PrescriptionView::ID_BACK, PrescriptionView::OnBack)
-EVT_TOOL(PrescriptionView::ID_SUBSCRIBE, PrescriptionView::OnSubscribe)
 END_EVENT_TABLE()
 
 
@@ -122,6 +121,7 @@ PrescriptionView::~PrescriptionView()
 {
 	mPanelManager->UnInit();
 	mDataView.release();
+	
 }
 
 void PrescriptionView::GenerateFakePrescription()
@@ -182,24 +182,7 @@ void PrescriptionView::OnLabelPreview(wxCommandEvent& evt)
 	mDispensaryView->PreviewLabel();
 }
 
-void PrescriptionView::OnSubscribe(wxCommandEvent& evt)
-{
-	//
-	if (mCurrentPrescriptionSubsciber) {
-		wxMessageBox(fmt::format("Subscribed to {}", mCurrentPrescriptionSubsciber->GetPublishersIDAsString()), "Prescription Subscriber", 
-			wxICON_INFORMATION | wxOK);
-		return;
-	}
-	wxBusyCursor curosr;
-	mCurrentPrescriptionSubsciber = NetInstance::instance().CreateSubScriber("Afrobug subscriber from PharmaOffice");
-	if (!mCurrentPrescriptionSubsciber) {
-		wxMessageBox("Cannot create and connect to Afrobug Watermellon server, try again", "Prescription Subscriber", wxICON_ERROR | wxOK);
-		return;
-	}
 
-	//continue with the rest of the thing
-	
-}
 
 void PrescriptionView::OnPrescriptionActivated(wxDataViewEvent& evt)
 {

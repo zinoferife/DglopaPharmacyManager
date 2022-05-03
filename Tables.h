@@ -388,3 +388,22 @@ public:
 		status
 	};
 };
+/*---------------------------------------------------------------ProductTimeStamp-------------------------------------------------------------------------*/
+class ProductTimeStamp : public nl::vector_table<std::uint64_t, std::uint64_t, nl::date_time_t, nl::date_time_t>
+{
+public:
+	BEGIN_COL_NAME("product_time_stamp")
+		COL_NAME("id")
+		COL_NAME("product_id")
+		COL_NAME("added_time")
+		COL_NAME("edited_time")
+	END_COL_NAME()
+
+	enum {
+		id = 0,
+		product_id,
+		added_time,
+		edited_time
+	};
+
+};

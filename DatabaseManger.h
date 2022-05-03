@@ -253,6 +253,24 @@ public:
 		}
 	}
 
+	template<typename Value>
+	void DeleteTable(const Value& value)
+	{
+		static_assert(nl::detail::is_relation_row_v<Value, table>, "Value is not a valid table row type");
+		nl::query q;
+		q.del(table::table_name).where(fmt::format("{} = \'{:d}\'", table:: template get_col_name<table::id>(), nl::row_value<table::id>(value)));
+		auto stat = mDatabase.prepare_query(q);
+		if (stat == nl::database::BADSTMT) {
+			spdlog::get("log")->error("invalid query {}", q.get_query());
+			return;
+		}
+		bool exec = mDatabase.exec_once(stat);
+		if (!exec) {
+			spdlog::get("log")->error("Cannot execute database command {}", mDatabase.get_error_msg());
+		}
+		mDatabase.remove_statement(stat);
+	}
+
 //table events
 public:
 	template<size_t... I>

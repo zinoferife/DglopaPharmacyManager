@@ -12,7 +12,6 @@ EVT_MENU(MainFrame::ID_IMPORT_JSON, MainFrame::OnImportJson)
 EVT_AUITOOLBAR_TOOL_DROPDOWN(MainFrame::ID_TOOL_USER, MainFrame::OnUserBtnDropDown)
 EVT_MENU(MainFrame::ID_USER_CREATE_ACCOUNT, MainFrame::OnCreateAccount)
 EVT_MENU(MainFrame::ID_USER_LOG_OUT, MainFrame::OnSignOut)
-EVT_MENU(MainFrame::ID_NETWORK_SETTING, MainFrame::OnSetUpNetworkAddress)
 END_EVENT_TABLE()
 
 
@@ -37,9 +36,11 @@ MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, c
 	mLog->info("Creating Main view");
 	CreateDataView();
 
+	mBitMapPlaceHolder = std::make_unique<wxStaticBitmap>(this,
+		ID_BITMAP_PLACEHOLDER, wxArtProvider::GetBitmap("PharmaOffice"));
+	mFrameManager->AddPane(mBitMapPlaceHolder.get(), wxAuiPaneInfo().Name("Bitmap").CenterPane());
 	CreateDatabaseMgr();
-	mLog->info("Starting network context");
-	NetInstance::instance().RunContext();
+	
 
 	mFrameManager->Update();
 	mLog->info("Main frame constructed sucessfully");
@@ -93,7 +94,6 @@ void MainFrame::CreateMenuBar()
 	views->Append(ID_MODULE, "Modules");
 
 	wxMenu* settings = new wxMenu;
-	settings->Append(ID_NETWORK_SETTING, "Network settings");
 
 	wxMenu* Help = new wxMenu;
 	Help->Append(wxID_ABOUT);
@@ -126,7 +126,7 @@ void MainFrame::CreateDatabase()
 	}
 	DatabasePath /= "pharmaOfficeDatabase.db";
 	try {
-		DatabaseInstance::instance(DatabasePath.string());
+		DatabaseInstance::instance(DatabasePath);
 	}
 	catch (std::exception& exp)
 	{
@@ -169,7 +169,7 @@ void MainFrame::SetMainFrameArt()
 void MainFrame::CreateDataView()
 {
 	mViewCtrl = std::make_unique<MainView>(this, MAIN_VIEW);
-	mFrameManager->AddPane(mViewCtrl.get(), wxAuiPaneInfo().Name("ViewCtrl").Caption("View").CenterPane());
+	mFrameManager->AddPane(mViewCtrl.get(), wxAuiPaneInfo().Name("ViewCtrl").Caption("View").CenterPane().Hide());
 	mFrameManager->Update();
 }
 
@@ -261,8 +261,13 @@ void MainFrame::OnUserBtnDropDown(wxAuiToolBarEvent& evt)
 			mToolBar->Realize();
 			mToolBar->Thaw();
 			mToolBar->Refresh();
+			
+			//remove placeholder
+			mFrameManager->GetPane("ViewCtrl").Show(true);
+			mFrameManager->GetPane("Bitmap").Show(false);
 			mFrameManager->Update();
 
+	
 			//send a sign in event
 			Users::notification_data data;
 			data.row_iterator = UsersInstance::instance()
@@ -294,6 +299,14 @@ void MainFrame::OnSignOut(wxCommandEvent& evt)
 {
 	if (wxMessageBox("Are you sure you want to sign out?", "SIGN OUT", wxYES_NO | wxICON_INFORMATION) == wxYES)
 	{
+		//notify the system about a sign out
+		Users::notification_data data;
+		data.row_iterator = UsersInstance::instance()
+			.find_on<Users::username>(nl::row_value<Users::username>(mActiveUser->GetActiveUser()));
+		data.event_type = 0;
+		UsersInstance::instance().notify<nl::notifications::evt>(data);
+
+		//display sign out state
 		mToolBar->Freeze();
 		//tool->SetMinSize(ResizeTool("Sign in"));
 		tool->SetLabel(wxT("Sign in"));
@@ -302,13 +315,12 @@ void MainFrame::OnSignOut(wxCommandEvent& evt)
 		mToolBar->Realize();
 		mToolBar->Thaw();
 		mToolBar->Refresh();
+
+		//set place holder
+		mFrameManager->GetPane("ViewCtrl").Show(false);
+		mFrameManager->GetPane("Bitmap").Show(true);
 		mFrameManager->Update();
 
-		Users::notification_data data;
-		data.row_iterator = UsersInstance::instance()
-			.find_on<Users::username>(nl::row_value<Users::username>(mActiveUser->GetActiveUser()));
-		data.event_type = 0;
-		UsersInstance::instance().notify<nl::notifications::evt>(data);
 
 	}
 
@@ -324,54 +336,6 @@ void MainFrame::OnCreateAccount(wxCommandEvent& evt)
 	}
 }
 
-void MainFrame::OnSetUpNetworkAddress(wxCommandEvent& evt)
-{
-	wxTextEntryDialog addressDialog(this, "Enter a valid Address", "Network setting");
-	if (addressDialog.ShowModal() == wxID_OK) {
-		std::string address = addressDialog.GetValue().ToStdString();
-		if (VerifyAddress(address)) {
-			wxTextEntryDialog portDialog(this, "Enter a valid port", "Network Setting");
-			if (portDialog.ShowModal() == wxID_OK) {
-				std::string port = portDialog.GetValue().ToStdString();
-				try {
-					int portNum = std::stoi(port);
-					NetInstance::instance().SetServerSubscriberEndpoint({ asio::ip::address::from_string(address), 
-						static_cast<std::uint16_t>(portNum) });
-					wxMessageBox(fmt::format("Connecting to {} at port {:d}", NetInstance::instance().GetServerSubscriberEndpointAddressAsString()
-						, portNum), "Network Settings", wxICON_INFORMATION | wxOK);
-				}
-				catch (std::invalid_argument const& ex) {
-					wxMessageBox(fmt::format("Invalid port, {}", ex.what()), "Network Setting",
-						wxICON_ERROR | wxOK);
-				}
-			}
-		}
-		else {
-			wxMessageBox("Invalid network address entered", "Network Setting", wxICON_ERROR | wxOK);
-		}
-	}
-		 
-}
-
-bool MainFrame::VerifyAddress(const std::string& address)
-{
-	std::stringstream in(address, std::ios::in);
-	std::string temp;
-	int count = 0;
-	while (std::getline(in, temp, '.')) {
-		if (temp.empty()) {
-			return false;
-		}
-		for (auto& c : temp) {
-			if (!std::isdigit(c)) return false;
-		}
-		count++;
-	}
-	if (count != 4) {
-		return false;
-	}
-	return true;
-}
 
 void MainFrame::OnAbout(wxCommandEvent& evt)
 {

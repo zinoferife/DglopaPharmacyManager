@@ -20,10 +20,13 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_DATAVIEW_ITEM_ACTIVATED(ProductView::ID_DATA_VIEW, ProductView::OnProductItemActivated)
 	EVT_DATAVIEW_ITEM_CONTEXT_MENU(ProductView::ID_DATA_VIEW, ProductView::OnProductContextMenu)
 	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_EDIT, ProductView::OnProductDetailView)
+	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_REMOVE, ProductView::OnRemoveProduct)
+	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_EXPORT_JSON, ProductView::OnProductExportJson)
 	EVT_ERASE_BACKGROUND(ProductView::OnEraseBackground)
 	EVT_LIST_COL_CLICK(ProductView::ID_INVENTORY_VIEW, ProductView::OnInventoryViewColClick)
 	EVT_TOOL(ProductView::ID_INVENTORY_VIEW_TOOL_ADD, ProductView::OnInventoryAddTool)
 	EVT_CHOICE(ProductView::ID_CATEGORY_LIST_CONTROL, ProductView::OnCategorySelected)
+	EVT_AUI_PANE_CLOSE(ProductView::OnPaneClose)
 END_EVENT_TABLE()
 
 ProductView::ProductView()
@@ -99,7 +102,7 @@ void ProductView::CreateToolBar()
 	bar->AddTool(ID_GROUP_BY, wxT("Out of stock"), wxArtProvider::GetBitmap("bag"));
 	bar->AddTool(ID_REMOVE_GROUP_BY, wxT("Reset"), wxArtProvider::GetBitmap("minimize"));
 	bar->AddTool(ID_ADD_PRODUCT, wxT("Add product"), wxArtProvider::GetBitmap("action_add"));
-	bar->AddTool(ID_REMOVE_PRODUCT, wxT("Add product"), wxArtProvider::GetBitmap("action_remove"));
+	bar->AddTool(ID_REMOVE_PRODUCT, wxT("Remove product"), wxArtProvider::GetBitmap("action_remove"));
 
 	//realise and add to manager
 	bar->Realize();
@@ -294,13 +297,13 @@ void ProductView::ImportProductsFromJson(std::fstream& file)
 	ProductDetails products_detail;
 	Categories category;
 	progress.Update(10, "Reading products");
-	for (auto cat_obj = json.begin(); cat_obj != json.end(); cat_obj++){
+	for (auto cat_obj = json.begin(); cat_obj != json.end(); (void)cat_obj++){
 		std::string cat_name = cat_obj.key();
 		auto cat_iter = category.find_on<Categories::name>(format_cat_name(cat_name));
 		if (cat_iter == category.end()){
 			cat_iter = category.add(GenRandomId(), cat_name);
 		}
-		for (auto product_obj = cat_obj->begin(); product_obj != cat_obj->end(); product_obj++){
+		for (auto product_obj = cat_obj->begin(); product_obj != cat_obj->end(); (void)product_obj++){
 			auto& value = product_obj.value();
 			Products::row_t product;
 			ProductDetails::row_t product_detail;
@@ -393,7 +396,12 @@ void ProductView::OnRemoveProduct(wxCommandEvent& evt)
 			if (wxMessageBox(fmt::format("Are you sure you want to remove \"{}\"",
 				nl::row_value<Products::name>(*data.row_iterator)), "Remove product", wxICON_INFORMATION | wxYES_NO) == wxYES) {
 				ProductInstance::instance().notify(nl::notifications::remove, data);
+				mDatabaseMgr->DeleteTable(*data.row_iterator);
+
+
 				ProductInstance::instance().del_row(data.row_iterator);
+
+				//remove all instances of this delete
 			}
 		}
 	}
@@ -490,6 +498,8 @@ void ProductView::OnFile(wxAuiToolBarEvent& evt)
 		PopupMenu(menu);
 	}
 }
+
+
 
 void ProductView::OnInventoryViewColClick(wxListEvent& evt)
 {
@@ -608,7 +618,16 @@ void ProductView::OnProductContextMenu(wxDataViewEvent& evt)
 {
 	wxMenu* menu = new wxMenu;
 	auto edit_m = menu->Append(ID_PRODUCT_CONTEXT_EDIT, "Edit");
+	auto remove_m = menu->Append(ID_PRODUCT_CONTEXT_REMOVE, "Remove");
+
+	wxMenu* sExportMenu = new wxMenu;
+	sExportMenu->Append(ID_PRODUCT_CONTEXT_EXPORT_JSON, "Json");
+
+	auto export_m = menu->Append(ID_PRODUCT_CONTEXT_EXPORT, "Export", sExportMenu);
+
 	edit_m->SetBitmaps(wxArtProvider::GetBitmap("reply"));
+	remove_m->SetBitmap(wxArtProvider::GetBitmap("action_remove"));
+	export_m->SetBitmap(wxArtProvider::GetBitmap("download"));
 	PopupMenu(menu);
 }
 
@@ -690,6 +709,90 @@ void ProductView::OnUnSelectMultiple(wxCommandEvent& evt)
 	mSelectedProductIndex.clear();
 	mDataView->Thaw();
 	mDataView->Update();
+}
+
+void ProductView::OnPaneClose(wxAuiManagerEvent& evt)
+{
+	auto paneInfo = evt.GetPane();
+	if (paneInfo) {
+		if (paneInfo->name == "DetailView") {
+			if (mDetailView->IsAnyModified()) {
+				if (wxMessageBox("Changing edited product without saving changes, continue?", "EDIT PRODUCT", wxICON_WARNING | wxYES_NO) != wxYES) {
+					evt.Veto();
+					return;
+				}
+			}
+		}
+	}
+}
+std::vector<std::string> SplitHealthTags(const std::string& condition_string)
+{
+	if (condition_string.empty()) return {};
+	std::stringstream stream(condition_string, std::ios::in);
+	std::vector<std::string> tags;
+	std::string temp;
+	while (std::getline(stream, temp, ',')) {
+		tags.push_back(temp);
+	}
+	return tags;
+}
+
+
+void ProductView::OnProductExportJson(wxCommandEvent& evt)
+{
+	if (!mSelectedProductIndex.empty()) {
+		Products products;
+		//save file 
+		wxFileDialog saveFileDialog(this, _("Save Json file"), "", "",
+				"Json files (*.json)|*.json", wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+
+		if (saveFileDialog.ShowModal() == wxID_CANCEL)
+			return;     // the user changed idea...
+
+		std::string path = saveFileDialog.GetPath().ToStdString();
+		auto full_path = std::filesystem::path(path);
+		if (full_path.extension() != ".json") {
+			wxMessageBox("File must be a json file", "Export data", wxICON_INFORMATION | wxOK);
+			return;
+		}
+		std::fstream file(full_path, std::ios::out);
+		wxProgressDialog proDlg(wxT("Download data"), wxT("Save Data as Json"), 100, this, wxPD_APP_MODAL | wxPD_CAN_ABORT | wxPD_ELAPSED_TIME | wxPD_REMAINING_TIME);
+
+		products.reserve(mSelectedProductIndex.size());
+		for (auto index : mSelectedProductIndex) {
+			products.add(ProductInstance::instance()[index]);
+		}
+		auto ppd = products.join_on<Products::id, ProductDetails::id>(ProductDetailsInstance::instance());
+		auto cat_product = ppd.join_on<Products::category_id, Categories::id>(CategoriesInstance::instance());
+		auto cat_group = cat_product.map_group_by<Products::category_id>();
+		js::json out;
+		for (auto& rel_pair : cat_group) {
+			js::json category_json; 
+			auto& rel = rel_pair.second;
+			for (auto& rel_row : rel) {
+				js::json product;
+				js::json health_tag = js::json::array();
+				auto tags = SplitHealthTags(nl::row_value<nl::j_<ProductDetails::health_conditions, Products::row_t>>(rel_row));
+				for (auto&& tag : tags) {
+					health_tag.push_back(tag);
+				}
+				product["Product Active ingredent"] = nl::row_value<nl::j_<ProductDetails::active_ing, Products::row_t>>(rel_row);
+				product["Product Description"] = nl::row_value<nl::j_<ProductDetails::description, Products::row_t>>(rel_row);
+				product["Product name"] = nl::row_value<Products::name>(rel_row);
+				product["Stock count"] = nl::row_value<Products::stock_count>(rel_row);
+				product["Health tags"] = health_tag;
+				product["Package size"] = nl::row_value<Products::package_size>(rel_row);
+				product["Direction for use"] = nl::row_value<nl::j_<ProductDetails::dir_for_use, Products::row_t>>(rel_row);
+				category_json[nl::row_value<Products::name>(rel_row)] = product;
+			}
+			out[nl::row_value<nl::j_<Categories::name, decltype(ppd)::row_t>>(rel[0])] = category_json;
+		}
+		file << out;
+	}
+	else {
+		wxMessageBox("No item selected to be exported; click select to export items", "Export data", wxICON_INFORMATION | wxOK);
+	}
+
 }
 
 void ProductView::DoSearch(const std::string& searchString)

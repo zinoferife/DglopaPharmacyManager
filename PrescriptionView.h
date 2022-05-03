@@ -17,7 +17,6 @@
 #include "SearchAutoComplete.h"
 #include "nlohmann/json.hpp"
 #include "DispensaryView.h"
-#include "NetSubscriber.h"
 
 namespace js = nlohmann;
 class PrescriptionView : public wxPanel
@@ -55,7 +54,6 @@ private:
 	void OnAddPrescription(wxCommandEvent& evt);
 	void OnDispense(wxCommandEvent& evt);
 	void OnLabelPreview(wxCommandEvent& evt);
-	void OnSubscribe(wxCommandEvent& evt);
 
 
 	//evts 
@@ -67,7 +65,6 @@ private:
 	std::unique_ptr<wxDataViewCtrl> mDataView;
 	std::unique_ptr<DispensaryView> mDispensaryView;
 	DataModel<Prescriptions>* mModel; // dataview handles destruction
-	NetSubscriberPtr mCurrentPrescriptionSubsciber;
 	//item attributes
 
 	

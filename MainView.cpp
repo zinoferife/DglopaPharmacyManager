@@ -40,18 +40,20 @@ MainView::~MainView()
 	}
 	//allow the window hierarchy destory the objects
 	UnregisterNotifications();
-	mMainViewManager.release();
+	mMainViewManager.reset(nullptr);
 	mViewBook.release();
 	mTreeCtrl.release();
-	mSView.second.release();
 	mPView.second.release();
+	mSView.second.release();
 	mPrescriptionView.second.release();
+	if (!mDataViewsMap.empty()) { mDataViewsMap.clear(); }
 }
 
 void MainView::CreateProductView()
 {
 	mPView.second = std::make_unique<ProductView>(this, wxID_ANY);
 	mPView.second->Hide();
+	TestTupleBuffer();
 }
 
 void MainView::CreateSalesView()
@@ -375,4 +377,18 @@ void MainView::OnUserNotification(const Users::table_t& table, const Users::noti
 	default:
 		break;
 	}
+}
+
+void MainView::TestTupleBuffer()
+{
+	nl::tuple_buffer<Products::row_t> buffer;
+	buffer.set_state((size_t)Products::id, (size_t)Products::name);
+	auto& row = ProductInstance::instance()[2];
+	nl::write_tuple_buffer(row, buffer);
+
+	Products::row_t new_tuple;
+	nl::read_tuple_buffer(new_tuple, buffer);
+
+	spdlog::get("log")->info("{}", nl::row_value<Products::name>(new_tuple));
+
 }
