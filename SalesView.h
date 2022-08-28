@@ -7,26 +7,22 @@
 #include <wx/panel.h>
 #include <wx/aui/aui.h>
 #include <wx/aui/auibar.h>
-#include <wx/dataview.h>
 #include <wx/artprov.h>
 #include <wx/srchctrl.h>
 #include <wx/combobox.h>
 #include <wx/progdlg.h>
 #include <wx/tglbtn.h>
-
+#include <wx/grid.h>
+#include <wx/dataview.h>
 
 
 #include "Tables.h"
-#include "DataModelBase.h"
 #include "Instances.h"
 #include "SearchAutoComplete.h"
-#include "InventoryView.h"
-#include "ProductEntryDialog.h"
 #include "Searcher.h"
 #include "DatabaseManger.h"
-#include "DetailView.h"
-#include "ExpiryView.h"
 #include "ListDisplayDialog.h"
+#include "DataModel.h"
 
 
 #include <nl_uuid.h>
@@ -34,35 +30,51 @@
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 
-#include <fstream>
-#include <unordered_map>
-#include <set>
-#include <bitset>
-#include <memory>
-#include <random>
-#include <functional>
 
 
-class SalesView
+
+
+
+class SalesView : public wxPanel
 {
 public:
-	~SalesView();
+	virtual ~SalesView();
 	SalesView(wxWindow* parent,
 		wxWindowID id,
 		const wxPoint& pos = wxDefaultPosition,
 		const wxSize& size = wxDefaultSize);
 	//ids 
 	enum {
-
+		ID_DATA_VIEW,
+		ID_CHECKOUT,
+		ID_SETTINGS,
+		ID_ADD_PRODUCT
 
 	};
 
+	void CreateTopToolBar();
+	void CreateBottomToolBar();
 
+	void CreateDataView();
+	void CreateSpecialColHandlers();
+
+	void SetDefaultAuiArt();
+
+public:
+	void OnCheckOut(wxCommandEvent& evnt);
+	void OnReturn(wxCommandEvent& evnt);
+	void OnAddProduct(wxCommandEvent& evnt);
+
+	const std::string& GetProductNameByID(Sales::elem_t<Sales::product_id> id) const;
 private:
 	std::unique_ptr<wxAuiManager> mViewManager;
+
+	//dataview and model
 	std::unique_ptr<wxDataViewCtrl> mDataView;
 	DataModel<Sales>* mModel;
+	Sales mSalesTable;
 
-	wxAuiToolBar* bar;
+	DECLARE_EVENT_TABLE()
+
 };
 

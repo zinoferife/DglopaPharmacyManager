@@ -6,6 +6,9 @@ EVT_TOOL(PrescriptionView::ID_DISPENSE, PrescriptionView::OnDispense)
 EVT_TOOL(PrescriptionView::ID_PREVIEW, PrescriptionView::OnLabelPreview)
 EVT_DATAVIEW_ITEM_ACTIVATED(PrescriptionView::ID_DATA_VIEW, PrescriptionView::OnPrescriptionActivated)
 EVT_TOOL(PrescriptionView::ID_BACK, PrescriptionView::OnBack)
+EVT_TOOL(PrescriptionView::ID_REFRESH, PrescriptionView::OnRefresh)
+EVT_TOOL(PrescriptionView::ID_SEARCH_FOR_PRESCRIPTION, PrescriptionView::OnSearchforPrescription)
+EVT_CHOICE(PrescriptionView::ID_PRESCRIPTION_SOURCE, PrescriptionView::OnPrescriptionChoiceChange)
 END_EVENT_TABLE()
 
 
@@ -32,9 +35,28 @@ void PrescriptionView::CreateToolBar()
 	search->ShowCancelButton(true);
 	bar->AddControl(search);
 	bar->AddSeparator();
+	mPrescriptionSourceChoiceBox = new wxChoice(bar, ID_PRESCRIPTION_SOURCE, wxDefaultPosition, wxSize(200, -1), wxArrayString{});
+	bar->AddControl(mPrescriptionSourceChoiceBox, "Prescription sources");
+	mPrescriptionSourceChoiceBox->Bind(wxEVT_PAINT, [=](wxPaintEvent& evt) {
+		wxPaintDC dc(mPrescriptionSourceChoiceBox);
+		wxRect rect(0, 0, dc.GetSize().GetWidth(), dc.GetSize().GetHeight());
+
+		dc.SetBrush(*wxWHITE);
+		dc.SetPen(*wxGREY_PEN);
+		dc.DrawRectangle(rect);
+		dc.DrawBitmap(wxArtProvider::GetBitmap(wxART_GO_DOWN, wxART_OTHER, wxSize(10, 10)), wxPoint(rect.GetWidth() - 15, (rect.GetHeight() / 2) - 5));
+		auto sel = mPrescriptionSourceChoiceBox->GetStringSelection();
+		if (!sel.IsEmpty()) {
+			dc.DrawLabel(sel, rect, wxALIGN_CENTER);
+		}
+		});
+	mPrescriptionSourceChoiceBox->SetHelpText("Select Prescription Source");
+	mPrescriptionSourceChoiceBox->SetLabelText("Select Prescription Source");
+
 	bar->AddStretchSpacer();
 	bar->AddTool(ID_ADD_PRESCRIPTION, wxT("Add fake prescription"), wxArtProvider::GetBitmap("action_add"));
 	bar->AddTool(ID_SUBSCRIBE, wxT("Connect"), wxArtProvider::GetBitmap("reply"));
+	bar->AddTool(ID_REFRESH, wxT("Refresh"), wxArtProvider::GetBitmap("file"));
 	bar->Realize();
 	mPanelManager->AddPane(bar, wxAuiPaneInfo().Name(wxT("Tool")).Caption(wxT("Tool bar")).ToolbarPane().Top()
 		.Resizable().MinSize(wxSize(-1, 30)).DockFixed()
@@ -44,8 +66,25 @@ void PrescriptionView::CreateToolBar()
 void PrescriptionView::LoadPrescriptions(const nl::date_time_t& start, const nl::date_time_t& stop)
 {
 	nl::query loadQ;
+	auto start_rep = nl::to_representation(start);
+	auto stop_rep = nl::to_representation(stop);
+	loadQ.select("*").from(Prescriptions::table_name).where(fmt::format("{} > {:d} AND {} < {:d}",
+		Prescriptions::get_col_name<Prescriptions::date_issued>(),
+		start_rep, 
+		Prescriptions::get_col_name<Prescriptions::date_issued>(),
+		stop_rep));
 
+	//send the query message to the server to get prescriptions from the source selected
 
+	auto string = loadQ.get_query();
+	spdlog::get("log")->info("{}", string);
+	bool stats= mDatabaseManger->AddQuery("load", loadQ);
+	if (!stats) {
+		std::string error = DatabaseInstance::instance().get_error_msg();
+		spdlog::get("log")->error("{}", error);
+		mDatabaseManger->ChangeQuery("load", loadQ);
+	}
+	mDatabaseManger->LoadTable();
 }
 
 void PrescriptionView::CreateTable()
@@ -57,6 +96,7 @@ void PrescriptionView::CreateTable()
 	mModel->DecRef();
 	InitDataView();
 	SetSpecialColumns();
+	mDatabaseManger->CreateTable();
 }
 
 void PrescriptionView::CreateDispensaryView()
@@ -72,13 +112,33 @@ void PrescriptionView::CreateDispensaryToolBar()
 	bar->SetToolBitmapSize(wxSize(16, 16));
 	bar->AddTool(ID_BACK, wxEmptyString, wxArtProvider::GetBitmap("arrow_back"));
 	bar->AddStretchSpacer();
+	bar->AddTool(ID_ADD_DRUG_TO_PRESCRIPTION, "Add Drug To Prescription", wxArtProvider::GetBitmap("action_add"));
+	bar->AddTool(ID_SHOW_PATIENT_FILE,"Show Patient File", wxArtProvider::GetBitmap("folder"));
+	bar->AddTool(ID_MAKE_INTERVENTION,"Add Drug Intervention", wxArtProvider::GetBitmap("reply"));
+	bar->AddTool(ID_REPORT_INTERACTION,"Report Drug Interaction", wxArtProvider::GetBitmap("comments"));
+	bar->AddTool(ID_PREVIEW, "Preiew Label", wxArtProvider::GetBitmap("file"));
 	bar->AddTool(ID_DISPENSE, "Dispense", wxArtProvider::GetBitmap("download"));
-	bar->AddTool(ID_PREVIEW, "Preiew label", wxArtProvider::GetBitmap("file"));
 	bar->Realize();
 	mPanelManager->AddPane(bar, wxAuiPaneInfo().Name(wxT("DispensaryToolBar")).Caption(wxT("Tool bar")).ToolbarPane().Top()
 		.Resizable().MinSize(wxSize(-1, 30)).DockFixed()
 		.LeftDockable(false).RightDockable(false).Floatable(false).BottomDockable(false).Hide());
 
+}
+
+void PrescriptionView::CreatePrescriptionSourceChoice()
+{
+	//this is where communication occurs with the server
+	if (!mPrescriptionSourceChoiceBox) {
+		spdlog::get("log")->error("Cannot create prescription choice");
+	}
+	//send a get request to the server to get all the prescrption sources 
+	auto sp = std::make_shared<nl::session<http::empty_body>>(NetworkContextInstance::instance());
+	if (sp) {
+		//for now, later the source path would contain the pharmacy id which would used by the server to get sources in the
+		//area or the locations that are closer to the pharmacy
+		sp->get("localhost", "3000", "/prescriptions/sources/all", std::bind(&PrescriptionView::OnPrscriptionSource, this, std::placeholders::_1),
+				std::bind(&PrescriptionView::OnError, this, std::placeholders::_1));
+	}
 }
 
 void PrescriptionView::InitDataView()
@@ -177,9 +237,39 @@ void PrescriptionView::OnDispense(wxCommandEvent& evt)
 	mDispensaryView->Dispense();
 }
 
+void PrescriptionView::OnShowPaitientFile(wxCommandEvent& evt)
+{
+}
+
+void PrescriptionView::OnMakeIntervention(wxCommandEvent& evt)
+{
+}
+
+void PrescriptionView::OnReportInteraction(wxCommandEvent& evt)
+{
+}
+
+void PrescriptionView::OnAddDrugToPrescription(wxCommandEvent& evt)
+{
+}
+
 void PrescriptionView::OnLabelPreview(wxCommandEvent& evt)
 {
 	mDispensaryView->PreviewLabel();
+}
+
+void PrescriptionView::OnRefresh(wxCommandEvent& evt)
+{
+	//reloads new precriptions from the server,
+
+}
+
+void PrescriptionView::OnPrescriptionChoiceChange(wxCommandEvent& evt)
+{
+}
+
+void PrescriptionView::OnSearchforPrescription(wxCommandEvent& evt)
+{
 }
 
 
@@ -213,4 +303,32 @@ void PrescriptionView::OnBack(wxCommandEvent& evt)
 		mPanelManager->Update();
 	}
 
+}
+
+void PrescriptionView::OnPrscriptionSource(const nl::js::json& res)
+{
+	//this is called from  the network thread, it needs to do its work fast and finish
+	auto sources_iter = res.find("prescription_sources");
+	if (sources_iter == res.end()) {
+		spdlog::get("log")->error("Prescripton source; invalid Json in response from Server");
+		return;
+	}
+	if (!sources_iter->is_array()) {
+		spdlog::get("log")->error("Prescription source: invalid json response, sources not in the format that is acceptable from the server");
+		return;
+	}
+
+	wxArrayString mArray;
+	mArray.reserve(sources_iter->size());
+	for (int i = 0; i < sources_iter->size(); i++) {
+		mArray.push_back(std::string((*sources_iter)[i]));
+	}
+
+	//can i write into the mPrescriptionChoice widget from another thread??
+	mPrescriptionSourceChoiceBox->Append(mArray);
+
+}
+
+void PrescriptionView::OnError(const std::string& what)
+{
 }

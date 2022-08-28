@@ -2,14 +2,20 @@
 #include "PrintManager.h"
 
 // Global print data, to remember settings during the session
-wxPrintData* g_PrintData = (wxPrintData*)NULL;
+static wxPrintData* g_PrintData = (wxPrintData*)NULL;
 
 // Global page setup data
-wxPageSetupData* g_pageSetupData = (wxPageSetupData*)NULL;
+static wxPageSetupData* g_pageSetupData = (wxPageSetupData*)NULL;
 PrintManager::PrintManager()
 {
 	g_PrintData = new wxPrintData;
 	g_pageSetupData = new wxPageSetupDialogData;
+}
+
+PrintManager::~PrintManager()
+{
+	delete g_PrintData;
+	delete g_pageSetupData;
 }
 
 void PrintManager::PushPrintJob(std::shared_ptr<wxPrintout> printjob)

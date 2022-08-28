@@ -8,6 +8,7 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_TOOL(ProductView::ID_BACK, ProductView::OnBack)
 	EVT_TOOL(ProductView::ID_QUICK_SORT_TEST, ProductView::OnQuickSortTest)
 	EVT_TOOL(ProductView::ID_EXPIRY_VIEW, ProductView::OnExpiryView)
+	EVT_TOOL(ProductView::ID_TO_JSON, ProductView::OnToJson)
 	EVT_AUITOOLBAR_TOOL_DROPDOWN(ProductView::ID_FILE, ProductView::OnFile)
 	EVT_MENU(ProductView::ID_SELECT_MULTIPLE, ProductView::OnSelectMultiple)
 	EVT_MENU(ProductView::ID_UNSELECT_MULTIPLE, ProductView::OnUnSelectMultiple)
@@ -53,6 +54,7 @@ ProductView::ProductView(wxWindow* parent, wxWindowID id, const wxPoint& positio
 	//should be in mainFrame?? no not really
 	CreateDatabaseMgr();
 	CreateDataView();
+	InitJsonConverter();
 	mPanelManager->Update();
 }
 
@@ -103,6 +105,7 @@ void ProductView::CreateToolBar()
 	bar->AddTool(ID_REMOVE_GROUP_BY, wxT("Reset"), wxArtProvider::GetBitmap("minimize"));
 	bar->AddTool(ID_ADD_PRODUCT, wxT("Add product"), wxArtProvider::GetBitmap("action_add"));
 	bar->AddTool(ID_REMOVE_PRODUCT, wxT("Remove product"), wxArtProvider::GetBitmap("action_remove"));
+	bar->AddTool(ID_TO_JSON, wxT("Statistics"), wxArtProvider::GetBitmap("save"));
 
 	//realise and add to manager
 	bar->Realize();
@@ -194,6 +197,7 @@ void ProductView::LoadCategoryToChoiceBox()
 	auto cat = CategoriesInstance::instance().isolate_column<Categories::name>();
 	//size_t i = 0;
 	wxArrayString strArry;
+	strArry.reserve(cat.size());
 	for (auto&& name : cat){
 		strArry.push_back(std::move(name));
 	}
@@ -779,15 +783,17 @@ void ProductView::OnProductExportJson(wxCommandEvent& evt)
 				product["Product Active ingredent"] = nl::row_value<nl::j_<ProductDetails::active_ing, Products::row_t>>(rel_row);
 				product["Product Description"] = nl::row_value<nl::j_<ProductDetails::description, Products::row_t>>(rel_row);
 				product["Product name"] = nl::row_value<Products::name>(rel_row);
+				product["Product class"] = nl::row_value<nl::j_<ProductDetails::p_class, Products::row_t>>(rel_row);
 				product["Stock count"] = nl::row_value<Products::stock_count>(rel_row);
 				product["Health tags"] = health_tag;
 				product["Package size"] = nl::row_value<Products::package_size>(rel_row);
 				product["Direction for use"] = nl::row_value<nl::j_<ProductDetails::dir_for_use, Products::row_t>>(rel_row);
+				product["Unit price"] = nl::row_value<Products::unit_price>(rel_row);
 				category_json[nl::row_value<Products::name>(rel_row)] = product;
 			}
 			out[nl::row_value<nl::j_<Categories::name, decltype(ppd)::row_t>>(rel[0])] = category_json;
 		}
-		file << out;
+		file << out.dump(4);
 	}
 	else {
 		wxMessageBox("No item selected to be exported; click select to export items", "Export data", wxICON_INFORMATION | wxOK);
@@ -986,6 +992,35 @@ void ProductView::OnProductDetailUpdateNotification(const ProductDetails::table_
 		spdlog::get("log")->critical("Variant not the correct type, {}", except.what());
 	}
 	mModel->AddAttribute(mModified, nl::row_value<ProductDetails::id>(*data.row_iterator));
+}
+
+void ProductView::OnToJson(wxCommandEvent& evt)
+{
+	nl::js::json j;
+	auto time_start = std::chrono::high_resolution_clock::now();
+	for (auto iter = ProductInstance::instance().begin();
+		iter != ProductInstance::instance().end(); iter++) {
+		j[nl::row_value<Products::name>(*iter)] = product_json_converter::convert_to_json(*iter);
+	}
+	auto time_stop = std::chrono::high_resolution_clock::now();
+	float run = std::chrono::duration<float, std::chrono::milliseconds::period>(time_stop - time_start).count();
+	spdlog::get("log")->info("it took {:f}ms to seralise the whole product database", run);
+	std::filesystem::path path = std::filesystem::current_path() / "datastuff.json";
+	std::fstream file(path, std::ios::out);
+	if (file.is_open()) {
+		file << j.dump(4);
+	}
+
+
+}
+
+void ProductView::InitJsonConverter()
+{
+	product_json_converter::obj_name_vec_t& names = product_json_converter::get_obj_names();
+	for (int i = 0; i < Products::column_count; i++) {
+		names[i] = ProductInstance::instance().get_name(i);
+	}
+	product_json_converter::set_all_state();
 }
 
 

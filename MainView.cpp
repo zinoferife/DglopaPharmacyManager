@@ -44,7 +44,7 @@ MainView::~MainView()
 	mViewBook.release();
 	mTreeCtrl.release();
 	mPView.second.release();
-	mSView.second.release();
+	mSalesView.second.release();
 	mPrescriptionView.second.release();
 	if (!mDataViewsMap.empty()) { mDataViewsMap.clear(); }
 }
@@ -58,22 +58,8 @@ void MainView::CreateProductView()
 
 void MainView::CreateSalesView()
 {
-	mSView.second = std::make_unique<wxDataViewCtrl>(mViewBook.get(), SALES_VIEW, wxDefaultPosition, wxDefaultSize, wxDV_ROW_LINES | wxNO_BORDER);
-	wxDataViewModel* SalesModel = new DataModel<Sales>(SalesInstance::instance());
-	mSView.second->AssociateModel(SalesModel);
-	SalesModel->DecRef();
-	for (size_t i = 0; i < Sales::column_count; i++)
-	{
-		mSView.second->AppendTextColumn(SalesInstance::instance().get_name(i), i);
-	}
-	for (size_t i = 0; i < 30; i++)
-	{
-		SalesInstance::instance().add(i, i, i * 2, (i * 10 % 5), 100, nl::clock::now(), "0.08");
-	}
-	Sales::notification_data data{};
-	data.count = 30;
-	SalesInstance::instance().notify(nl::notifications::add_multiple, data);
-	mSView.second->Hide();
+	mSalesView.second = std::make_unique<SalesView>(this, wxID_ANY);
+	mSalesView.second->Hide();
 }
 
 void MainView::CreatePrescriptionView()
@@ -115,9 +101,10 @@ void MainView::CreateTreeCtrl()
 
 
 	auto transactionsID= AddToTree(mRootID, "Transactions", health_file, -1);
-	mSView.first = AddToTree(transactionsID, "Sales", file);
-	AddToViewMap(mSView.second.get(), mSView.first);
-	auto invoiceId = AddToTree(transactionsID, "Invoice", file);
+	
+	mSalesView.first = AddToTree(transactionsID, "Sales", file);
+	AddToViewMap(mSalesView.second.get(), mSalesView.first);
+
 	auto orderId =  AddToTree(transactionsID, "Order", file);
 
 

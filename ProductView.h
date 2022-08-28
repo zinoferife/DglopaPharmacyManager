@@ -29,6 +29,7 @@
 
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
+#include <tuple_json.h>
 
 #include <fstream>
 #include <unordered_map>
@@ -45,7 +46,7 @@ class ProductView : public wxPanel
 {
 	constexpr static char all_categories[] = "ALL CATEGORIES";
 public:
-	~ProductView();
+	virtual ~ProductView();
 
 	ProductView();
 	ProductView(wxWindow* parent, wxWindowID id, const wxPoint& position = wxDefaultPosition, const wxSize size = wxDefaultSize);
@@ -77,6 +78,7 @@ public:
 		ID_EXPIRY_VIEW,
 		ID_SELECT_MULTIPLE,
 		ID_UNSELECT_MULTIPLE,
+		ID_TO_JSON,
 		ID_FILE
 	};
 
@@ -94,6 +96,7 @@ private:
 	void CreateInventoryList();
 	void CreateDatabaseMgr();
 
+	
 
 	void CreateInventory(std::uint64_t product_id);
 	void SetDefaultArt();
@@ -145,6 +148,10 @@ private:
 	void OnProductUpdateNotification(const Products::table_t& table, const Products::notification_data& data);
 	void OnProductDetailUpdateNotification(const ProductDetails::table_t&, const ProductDetails::notification_data& data);
 	
+	//JSON test
+	void OnToJson(wxCommandEvent& evt);
+	typedef nl::tuple_json<Products::row_t> product_json_converter;
+	void InitJsonConverter();
 private:
 	//for test 
 	std::bitset<3> mSearchFlags;

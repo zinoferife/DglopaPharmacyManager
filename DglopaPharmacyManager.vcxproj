@@ -185,6 +185,7 @@
     <ClCompile Include="PrintManager.cpp" />
     <ClCompile Include="ProductEntryDialog.cpp" />
     <ClCompile Include="ProductView.cpp" />
+    <ClCompile Include="SalesTable.cpp" />
     <ClCompile Include="SalesView.cpp" />
     <ClCompile Include="SignInDialog.cpp" />
     <ClCompile Include="TableMonoState.cpp" />
@@ -214,6 +215,7 @@
     <ClInclude Include="ProductEntryDialog.h" />
     <ClInclude Include="ProductView.h" />
     <ClInclude Include="PropertyFunctions.h" />
+    <ClInclude Include="SalesTable.h" />
     <ClInclude Include="SalesView.h" />
     <ClInclude Include="SearchAutoComplete.h" />
     <ClInclude Include="Searcher.h" />

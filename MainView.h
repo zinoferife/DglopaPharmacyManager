@@ -20,6 +20,7 @@
 #include "DataModelBase.h"
 #include "ProductView.h"
 #include "PrescriptionView.h"
+#include "SalesView.h"
 
 namespace fs = std::filesystem;
 namespace std
@@ -119,8 +120,8 @@ private:
 	std::unique_ptr<wxAuiNotebook> mViewBook{};
 	std::unique_ptr<wxTreeCtrl> mTreeCtrl{};
 	std::pair<wxTreeItemId, std::unique_ptr<ProductView>> mPView{};
-	std::pair<wxTreeItemId, std::unique_ptr<wxDataViewCtrl>> mSView{};
 	std::pair<wxTreeItemId, std::unique_ptr<PrescriptionView>> mPrescriptionView{};
+	std::pair<wxTreeItemId, std::unique_ptr<SalesView>> mSalesView;
 
 	//for remvoing to addiing 
 	std::unordered_map<wxTreeItemId, wxWindow*> mDataViewsMap{};

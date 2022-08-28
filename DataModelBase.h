@@ -28,7 +28,9 @@ class DataModel : public wxDataViewModel
 {
 	typedef typename Data::template elem_t<Data::id> id_t;
 	typedef std::unordered_map<id_t, std::shared_ptr<wxDataViewItemAttr>> itemToAttr_t;
-	typedef std::pair<std::function<wxVariant(size_t, size_t)>, std::function<bool(size_t, size_t, const wxVariant&)>> SpeicalColHandler_t;
+	typedef std::function<wxVariant(size_t, size_t)> get_function_t;
+	typedef std::function<bool(size_t, size_t, const wxVariant&)> set_function_t;
+	typedef std::pair<get_function_t, set_function_t> SpeicalColHandler_t;
 public:
 	DataModel(Data& instance)
 	: mData(instance), mPastLastAdded(-1){
@@ -353,7 +355,7 @@ public:
 		}
 	}
 
-	void SetSpecialColumnHandler(size_t column, std::function<wxVariant(size_t, size_t)>&& function)
+	void SetSpecialColumnHandler(size_t column, get_function_t&& function)
 	{
 		auto [iter, inserted] = mSpecialColHandlers.insert({ column, {function, nullptr} });
 		//if insertion fails assume replacement of handlers for the column
@@ -362,12 +364,22 @@ public:
 		}
 	}
 
+	void SetSpecialColumnHandler(size_t column, get_function_t&& get_function, set_function_t&& set_function)
+	{
+		auto [iter, inserted] = mSpecialColHandlers.insert({ column, {get_function, set_function} });
+		if (!inserted) {
+			//column already has either a get or a set operation, assumn that iter wants to change them
+			(*iter) = {get_function, set_function};
+		}
+	}
+
+
 	void RemoveSpecialColumnHandler(size_t column)
 	{
 		mSpecialColHandlers.erase(column);
 	}
 
-	void SetSpecialSetColumnHandler(size_t column, std::function<bool(size_t, size_t, const wxVariant&)>&& function)
+	void SetSpecialSetColumnHandler(size_t column, set_function_t&& function)
 	{
 		auto [iter, inserted] = mSpecialColHandlers.insert({ column, {nullptr, function} });
 		if (!inserted) {

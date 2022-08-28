@@ -9,6 +9,7 @@ class PrintManager
 {
 public:
 	PrintManager();
+	~PrintManager();
 	void PushPrintJob(std::shared_ptr<wxPrintout> printjob);
 	void PrintJob(wxWindow* parent);
 	void Preview(wxWindow* parent, wxPrintout* previeout, wxPrintout* printout);
