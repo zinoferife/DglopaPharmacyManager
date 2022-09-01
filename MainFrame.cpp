@@ -44,6 +44,9 @@ MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, c
 
 	mFrameManager->Update();
 	mLog->info("Main frame constructed sucessfully");
+	wxIcon appIcon;
+	appIcon.CopyFromBitmap(wxArtProvider::GetBitmap("dglopalogo"));
+	SetIcon(appIcon);
 }
 
 MainFrame::~MainFrame()

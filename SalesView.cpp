@@ -19,6 +19,7 @@ SalesView::SalesView(wxWindow* parent, wxWindowID id, const wxPoint& pos, const 
 	CreateBottomToolBar();
 	CreateDataView();
 	SetDefaultAuiArt();
+	mDataView->SetDropTarget(CreateDropTarget<SalesView>(this, Products::row_t{}));
 	mViewManager->Update();
 }
 
@@ -73,8 +74,9 @@ void SalesView::CreateDataView()
 
 void SalesView::CreateSpecialColHandlers()
 {
-	mModel->SetSpecialColumnHandler(0, [this](size_t row, size_t col) -> wxVariant{
+	mModel->SetSpecialColumnHandler(0, [this](size_t col, size_t row) -> wxVariant{
 		// // O: insert return statement here
+		spdlog::get("log")->info("ROW no is {:d}", row);
 		auto& row_t = mSalesTable.at(row);
 		auto id = nl::row_value<Sales::product_id>(row_t);
 		const std::string& product_name = GetProductNameByID(id);
@@ -114,6 +116,7 @@ void SalesView::OnAddProduct(wxCommandEvent& evnt)
 
 const std::string& SalesView::GetProductNameByID(Sales::elem_t<Sales::product_id> id) const
 {
+	spdlog::get("log")->info("Id is {:d}", id);
 	auto& p = ProductInstance::instance();
 	auto iter = p.find_on<Products::id>(id);
 	if (iter == p.end()) {
@@ -122,4 +125,66 @@ const std::string& SalesView::GetProductNameByID(Sales::elem_t<Sales::product_id
 	else {
 		return nl::row_value<Products::name>(*iter);
 	}
+}
+
+
+
+void SalesView::DropData(const Products::row_t& product)
+{
+	Sales::row_t row;
+	if (!CheckInStock(product)) return;
+
+	if (!CheckProductClass(product)) {
+		if (wxMessageBox(fmt::format("{} is a Prescription only medicine, Do you wish to continue sale?",
+			nl::row_value<Products::name>(product)), "Sales",
+			wxICON_QUESTION | wxYES_NO) == wxNO) {
+			return;
+		}
+	}
+	nl::row_value<Sales::product_id>(row) = nl::row_value<Products::id>(product);
+	nl::row_value<Sales::user_id>(row) = 64;
+	nl::row_value<Sales::customer_id>(row) = 64;
+	nl::row_value<Sales::price>(row) = nl::row_value<Products::unit_price>(product);
+	nl::row_value<Sales::amount>(row) = 1;
+	nl::row_value<Sales::date>(row) = nl::clock::now();
+
+	Sales::notification_data data;
+	data.row_iterator = mSalesTable.add(row);
+	mSalesTable.notify<nl::notifications::add>(data);
+
+	size_t index = mSalesTable.get_index(data.row_iterator);
+	index++;
+	wxDataViewItem item(wxUIntToPtr(index));
+	mDataView->Select(item);
+	mDataView->EnsureVisible(item);
+	mDataView->SetFocus();
+	Update();
+}
+
+bool SalesView::CheckInStock(const Products::row_t& row) const
+{
+	auto stock = nl::row_value<Products::stock_count>(row);
+	if (stock == 0) {
+		wxMessageBox(fmt::format("{} is out of stock",
+			nl::row_value<Products::name>(row)), "Sales", wxICON_INFORMATION | wxOK);
+		return false;
+	}
+	return true;
+}
+
+
+//setting option to turn this off
+//it can get really annoying
+bool SalesView::CheckProductClass(const Products::row_t& row) const
+{
+	auto iter = ProductDetailsInstance::instance().find_on<ProductDetails::id>(nl::row_value<Products::id>(row));
+	if (iter != ProductDetailsInstance::instance().end())
+	{
+		//product detail is found
+		const std::string& ref_class = nl::row_value<ProductDetails::p_class>(*iter);
+		if (ref_class == "POM") {
+			return false;
+		}
+	}
+	return true;
 }

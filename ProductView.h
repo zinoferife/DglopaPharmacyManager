@@ -40,6 +40,8 @@
 #include <functional>
 
 
+#include "DropTarget.h"
+
 namespace js = nlohmann;
 
 class ProductView : public wxPanel
@@ -148,6 +150,10 @@ private:
 	void OnProductUpdateNotification(const Products::table_t& table, const Products::notification_data& data);
 	void OnProductDetailUpdateNotification(const ProductDetails::table_t&, const ProductDetails::notification_data& data);
 	
+	//Drap and drop
+	void OnDragStart(wxDataViewEvent& evt);
+
+
 	//JSON test
 	void OnToJson(wxCommandEvent& evt);
 	typedef nl::tuple_json<Products::row_t> product_json_converter;

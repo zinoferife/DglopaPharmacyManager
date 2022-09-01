@@ -31,7 +31,7 @@
 #include <nlohmann/json.hpp>
 
 
-
+#include "DropTarget.h"
 
 
 
@@ -45,7 +45,7 @@ public:
 		const wxSize& size = wxDefaultSize);
 	//ids 
 	enum {
-		ID_DATA_VIEW,
+		ID_DATA_VIEW = wxID_HIGHEST + 2000,
 		ID_CHECKOUT,
 		ID_SETTINGS,
 		ID_ADD_PRODUCT
@@ -66,6 +66,11 @@ public:
 	void OnAddProduct(wxCommandEvent& evnt);
 
 	const std::string& GetProductNameByID(Sales::elem_t<Sales::product_id> id) const;
+
+	void DropData(const Products::row_t& row);
+	bool CheckInStock(const Products::row_t& row) const;
+	bool CheckProductClass(const Products::row_t& row) const;
+
 private:
 	std::unique_ptr<wxAuiManager> mViewManager;
 

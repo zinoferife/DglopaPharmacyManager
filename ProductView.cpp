@@ -20,6 +20,7 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_MENU(ProductView::ID_SEARCH_BY_PRICE, ProductView::OnSearchFlag)
 	EVT_DATAVIEW_ITEM_ACTIVATED(ProductView::ID_DATA_VIEW, ProductView::OnProductItemActivated)
 	EVT_DATAVIEW_ITEM_CONTEXT_MENU(ProductView::ID_DATA_VIEW, ProductView::OnProductContextMenu)
+	EVT_DATAVIEW_ITEM_BEGIN_DRAG(ProductView::ID_DATA_VIEW, ProductView::OnDragStart)
 	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_EDIT, ProductView::OnProductDetailView)
 	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_REMOVE, ProductView::OnRemoveProduct)
 	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_EXPORT_JSON, ProductView::OnProductExportJson)
@@ -741,7 +742,7 @@ std::vector<std::string> SplitHealthTags(const std::string& condition_string)
 	return tags;
 }
 
-
+//TODO: use the tuple_json converter in nitrolite
 void ProductView::OnProductExportJson(wxCommandEvent& evt)
 {
 	if (!mSelectedProductIndex.empty()) {
@@ -992,6 +993,22 @@ void ProductView::OnProductDetailUpdateNotification(const ProductDetails::table_
 		spdlog::get("log")->critical("Variant not the correct type, {}", except.what());
 	}
 	mModel->AddAttribute(mModified, nl::row_value<ProductDetails::id>(*data.row_iterator));
+}
+
+void ProductView::OnDragStart(wxDataViewEvent& evt)
+{
+	auto item = evt.GetItem();
+	//we are dragging a selected item
+	if (item.IsOk())
+	{
+		int index = mModel->GetDataViewItemIndex(item);
+		if (index != -1) {
+			auto& row = ProductInstance::instance()[index];
+			evt.SetDataObject(CreateDataObject(row));
+		}
+
+	}
+
 }
 
 void ProductView::OnToJson(wxCommandEvent& evt)
