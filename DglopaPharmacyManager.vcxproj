@@ -181,6 +181,7 @@
     <ClCompile Include="LogSink.cpp" />
     <ClCompile Include="MainFrame.cpp" />
     <ClCompile Include="MainView.cpp" />
+    <ClCompile Include="NetworkManager.cpp" />
     <ClCompile Include="PrescriptionView.cpp" />
     <ClCompile Include="PrintManager.cpp" />
     <ClCompile Include="ProductEntryDialog.cpp" />
@@ -199,8 +200,10 @@
     <ClInclude Include="CreateAccountDialog.h" />
     <ClInclude Include="DatabaseManger.h" />
     <ClInclude Include="DataModelBase.h" />
+    <ClInclude Include="DataObject.h" />
     <ClInclude Include="DetailView.h" />
     <ClInclude Include="DispensaryView.h" />
+    <ClInclude Include="DropTarget.h" />
     <ClInclude Include="ExpiryView.h" />
     <ClInclude Include="Instances.h" />
     <ClInclude Include="InventoryDialog.h" />
@@ -210,11 +213,13 @@
     <ClInclude Include="LogSink.h" />
     <ClInclude Include="MainFrame.h" />
     <ClInclude Include="MainView.h" />
+    <ClInclude Include="NetworkManager.h" />
     <ClInclude Include="PrescriptionView.h" />
     <ClInclude Include="PrintManager.h" />
     <ClInclude Include="ProductEntryDialog.h" />
     <ClInclude Include="ProductView.h" />
     <ClInclude Include="PropertyFunctions.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="SalesTable.h" />
     <ClInclude Include="SalesView.h" />
     <ClInclude Include="SearchAutoComplete.h" />
@@ -225,6 +230,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="app.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="icon1.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

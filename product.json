@@ -1,0 +1,19 @@
+{
+    "ANTI-BACTERIA": {
+        "Chloramphenicol capsule": {
+            "Direction for use": "As directed by your physician",
+            "Health tags": [
+                "Typhoid fever",
+                "Meningitis",
+                "Septicaemia"
+            ],
+            "Package size": 0,
+            "Product Active ingredent": "Chloramphenicol",
+            "Product Description": "Chloramphenicol is a potent broad specturm antibiotic indicated for the treatment of life threatening infections  particularly those caused by Haemophilus infuenzae | typhoid fever ",
+            "Product class": "POM",
+            "Product name": "Chloramphenicol capsule",
+            "Stock count": 31,
+            "Unit price": "200.0"
+        }
+    }
+}

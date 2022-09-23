@@ -12,6 +12,7 @@
 #include <atomic>
 
 #include <map>
+#include <utility>
 
 namespace fs = std::filesystem;
 namespace js = nlohmann;
@@ -22,6 +23,7 @@ class NetworkManager
 {
 
 public:
+	typedef std::pair<std::string, std::uint16_t>  service_addr_t;
 
 
 	NetworkManager(const std::string& hostname, std::uint16_t port);
@@ -30,27 +32,33 @@ public:
 
 
 
-	inline const std::string& GetHostName() const { return mHostName; }
-	inline void SetHostName(const std::string& hostname) { mHostName = hostname;  }
-	inline std::uint16_t GetPortNum() const { return mPortNum; }
-	inline void SetPortNum(std::uint16_t port) { mPortNum = port;  }
-
 	inline net::io_context& GetIoContex() { return mIoContext; }
 
-	inline net::ip::tcp::endpoint ToTcpEndpoint() const;
+
+	//returns an empty endpoint if there is no such service
+	net::ip::tcp::endpoint ToTcpEndpoint(const std::string& service_name) const;
+	net::ip::udp::endpoint ToUdpEndpoint(const std::string& service_name) const;
+
 
 	void Run();
 	void Join();
 	void Stop();
+
+	void Addervice(const std::string& service_name, const std::string& service_addr,
+		std::uint16_t service_port);
+	bool RemoveService(const std::string& service_name);
+
+
 private:
-	//the host of our remote serrvice 
-	std::uint16_t mPortNum;
-	std::string mHostName;
+	//the host of our remote serrvice
 	net::io_context mIoContext;
 	std::thread mNetThread;
 
+	
 	std::atomic_bool mStopCondition;
 
+	//holds the address of the services that PharmaOffice can connect to
+	std::map<std::string, service_addr_t> mServices;
 
 	//things for staticstics 
 

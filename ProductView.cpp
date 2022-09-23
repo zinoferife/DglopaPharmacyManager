@@ -181,7 +181,6 @@ void ProductView::CreateSpecialColumnHandlers()
 	
 	mModel->SetSpecialSetColumnHandler(6, [self = this](size_t col, size_t row, const wxVariant& varient) -> bool {
 		if (varient.GetBool()) {
-			spdlog::get("log")->info("Row selected {:d}", row);
 			self->mSelectedProductIndex.insert(row);
 			return false;
 		}

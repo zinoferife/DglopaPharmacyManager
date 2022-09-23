@@ -65,18 +65,24 @@ public:
 	void OnReturn(wxCommandEvent& evnt);
 	void OnAddProduct(wxCommandEvent& evnt);
 
+	void OnEditingStarted(wxDataViewEvent& evt);
+	void OnEditingStarting(wxDataViewEvent& evt);
+	void OnEditingDone(wxDataViewEvent& evt);
+
 	const std::string& GetProductNameByID(Sales::elem_t<Sales::product_id> id) const;
 
 	void DropData(const Products::row_t& row);
 	bool CheckInStock(const Products::row_t& row) const;
 	bool CheckProductClass(const Products::row_t& row) const;
 
+
 private:
 	std::unique_ptr<wxAuiManager> mViewManager;
+	bool mPOMwarningMessage = false;
 
 	//dataview and model
 	std::unique_ptr<wxDataViewCtrl> mDataView;
-	DataModel<Sales>* mModel;
+	std::unique_ptr<DataModel<Sales>> mModel;
 	Sales mSalesTable;
 
 	DECLARE_EVENT_TABLE()

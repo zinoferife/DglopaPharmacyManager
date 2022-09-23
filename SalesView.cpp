@@ -4,12 +4,18 @@
 BEGIN_EVENT_TABLE(SalesView, wxPanel)
 EVT_TOOL(SalesView::ID_CHECKOUT, SalesView::OnCheckOut)
 EVT_TOOL(SalesView::ID_ADD_PRODUCT, SalesView::OnAddProduct)
+EVT_DATAVIEW_ITEM_START_EDITING(SalesView::ID_DATA_VIEW, SalesView::OnEditingStarting)
+EVT_DATAVIEW_ITEM_EDITING_STARTED(SalesView::ID_DATA_VIEW, SalesView::OnEditingStarted)
+EVT_DATAVIEW_ITEM_EDITING_DONE(SalesView::ID_DATA_VIEW, SalesView::OnEditingDone)
 END_EVENT_TABLE()
 
 
 SalesView::~SalesView()
 {
 	//the grid takes ownership
+	if (mModel) {
+		mModel.release();
+	}
 }
 
 SalesView::SalesView(wxWindow* parent, wxWindowID id, const wxPoint& pos, const wxSize& size)
@@ -55,7 +61,7 @@ void SalesView::CreateDataView()
 {
 	mDataView = std::make_unique<wxDataViewCtrl>(this, SalesView::ID_DATA_VIEW,
 		wxDefaultPosition, wxDefaultSize, wxDV_ROW_LINES | wxNO_BORDER);
-	mModel = new DataModel<Sales>(mSalesTable);
+	mModel = std::make_unique<DataModel<Sales>>(mSalesTable);
 
 	//add columns
 	mDataView->AppendTextColumn("Product name", 0, wxDATAVIEW_CELL_ACTIVATABLE, 200, wxALIGN_CENTER , wxDATAVIEW_COL_RESIZABLE);
@@ -64,7 +70,7 @@ void SalesView::CreateDataView()
 	mDataView->AppendTextColumn(wxEmptyString , 60 , wxDATAVIEW_CELL_ACTIVATABLE, 100, wxALIGN_CENTER , wxDATAVIEW_COL_RESIZABLE);
 	
 	CreateSpecialColHandlers();
-	wxDataViewModel* m = mModel;
+	wxDataViewModel* m = mModel.get();
 	mDataView->AssociateModel(m);
 	m->DecRef();
 
@@ -101,7 +107,10 @@ void SalesView::SetDefaultAuiArt()
 
 void SalesView::OnCheckOut(wxCommandEvent& evnt)
 {
-	wxMessageBox("Checkout", "Sales", wxICON_INFORMATION | wxOK);
+	if (mSalesTable.empty()) {
+		wxMessageBox("No Products To Checkout", "Sales", wxICON_INFORMATION | wxOK);
+		return;
+	}
 }
 
 void SalesView::OnReturn(wxCommandEvent& evnt)
@@ -112,6 +121,45 @@ void SalesView::OnReturn(wxCommandEvent& evnt)
 void SalesView::OnAddProduct(wxCommandEvent& evnt)
 {
 	wxMessageBox("Add product", "Sales", wxICON_INFORMATION | wxOK);
+}
+
+void SalesView::OnEditingStarted(wxDataViewEvent& evt)
+{
+	auto dataItem = evt.GetItem();
+	if (dataItem.IsOk()) {
+		auto index = mModel->GetDataViewItemIndex(dataItem);
+		if (index == wxNOT_FOUND) {
+			spdlog::get("log")->error("Invalid Item in sales Table");
+			return;
+		}
+		spdlog::get("log")->info("Editing started on {:d}", nl::row_value<Sales::product_id>(mSalesTable[index]));
+	}
+}
+
+void SalesView::OnEditingStarting(wxDataViewEvent& evt)
+{
+	auto dataItem = evt.GetItem();
+	if (dataItem.IsOk()) {
+		auto index = mModel->GetDataViewItemIndex(dataItem);
+		if (index == wxNOT_FOUND) {
+			spdlog::get("log")->error("Invalid Item in sales Table");
+			return;
+		}
+		spdlog::get("log")->info("Editing starting on {:d}", nl::row_value<Sales::product_id>(mSalesTable[index]));
+	}
+}
+
+void SalesView::OnEditingDone(wxDataViewEvent& evt)
+{
+	auto dataItem = evt.GetItem();
+	if (dataItem.IsOk()) {
+		auto index = mModel->GetDataViewItemIndex(dataItem);
+		if (index == wxNOT_FOUND) {
+			spdlog::get("log")->error("Invalid Item in sales Table");
+			return;
+		}
+		spdlog::get("log")->info("Editing done on {:d}", nl::row_value<Sales::product_id>(mSalesTable[index]));
+	}
 }
 
 const std::string& SalesView::GetProductNameByID(Sales::elem_t<Sales::product_id> id) const
