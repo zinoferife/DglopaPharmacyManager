@@ -25,6 +25,8 @@ MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, c
 	CreateMenuBar();
 	CreateToolBar();
 	
+	CreateNetworkManger();
+
 	mLog->info("Main frame constructor");
 	mLog->info("Creating database");
 	CreateDatabase();
@@ -190,6 +192,12 @@ void MainFrame::CreateDatabaseMgr()
 	mUsersDatabaseMgr = std::make_unique<DatabaseManager<Users>>(UsersInstance::instance(), DatabaseInstance::instance());
 	mUsersDatabaseMgr->CreateTable();
 	mUsersDatabaseMgr->LoadTable();
+}
+
+void MainFrame::CreateNetworkManger()
+{
+	//creates the manager, and spin the network thread. 
+	NetworkManagerInstance::instance().Run();
 }
 
 void MainFrame::Settings()

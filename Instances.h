@@ -2,11 +2,13 @@
 #include <Singleton.h>
 #include "Tables.h"
 #include <Database.h>
+
 #include "PrintManager.h"
+#include "NetworkManager.h"
 #include <random>
 #include <functional>
 
-#include <nl_http.h>
+
 typedef nl::singleton_holder<Products> ProductInstance;
 typedef nl::singleton_holder<Categories> CategoriesInstance;
 typedef nl::singleton_holder<Sales> SalesInstance;
@@ -19,7 +21,7 @@ typedef nl::singleton_holder<Prescriptions> PrescriptionInstance;
 typedef nl::singleton_holder<TrackList> TrackListInstance;
 typedef nl::singleton_holder<nl::database> DatabaseInstance;
 typedef nl::singleton_holder<PrintManager> PrinterInstance;
-typedef nl::singleton_holder<net::io_context> NetworkContextInstance;
+typedef nl::singleton_holder<NetworkManager> NetworkManagerInstance;
 
 //generates random Ids between one millon and 10 millon, They do not need to be universally unique
 //just unique inthe context of the table that the ids in

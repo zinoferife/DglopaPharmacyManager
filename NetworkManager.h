@@ -13,6 +13,8 @@
 
 #include <map>
 #include <utility>
+#include <string_view>
+
 
 namespace fs = std::filesystem;
 namespace js = nlohmann;
@@ -23,10 +25,10 @@ class NetworkManager
 {
 
 public:
-	typedef std::pair<std::string, std::uint16_t>  service_addr_t;
+	typedef std::pair<std::string, std::string>  service_addr_t;
 
 
-	NetworkManager(const std::string& hostname, std::uint16_t port);
+	NetworkManager();
 
 	~NetworkManager(); 
 
@@ -35,24 +37,26 @@ public:
 	inline net::io_context& GetIoContex() { return mIoContext; }
 
 
-	//returns an empty endpoint if there is no such service
-	net::ip::tcp::endpoint ToTcpEndpoint(const std::string& service_name) const;
-	net::ip::udp::endpoint ToUdpEndpoint(const std::string& service_name) const;
-
 
 	void Run();
 	void Join();
 	void Stop();
 
-	void Addervice(const std::string& service_name, const std::string& service_addr,
-		std::uint16_t service_port);
+	bool AddService(const std::string& service_name, const std::string& service_addr,
+		const std::string& service_port);
 	bool RemoveService(const std::string& service_name);
+
+	std::string_view GetServiceAddress(const std::string& serv_name) const;
+	std::string_view GetSerivePort(const std::string& serv_name) const;
+
 
 
 private:
 	//the host of our remote serrvice
 	net::io_context mIoContext;
 	std::thread mNetThread;
+	std::unique_ptr<net::io_context::work> m_work;
+
 
 	
 	std::atomic_bool mStopCondition;

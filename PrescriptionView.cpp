@@ -8,6 +8,7 @@ EVT_DATAVIEW_ITEM_ACTIVATED(PrescriptionView::ID_DATA_VIEW, PrescriptionView::On
 EVT_TOOL(PrescriptionView::ID_BACK, PrescriptionView::OnBack)
 EVT_TOOL(PrescriptionView::ID_REFRESH, PrescriptionView::OnRefresh)
 EVT_TOOL(PrescriptionView::ID_SEARCH_FOR_PRESCRIPTION, PrescriptionView::OnSearchforPrescription)
+EVT_TOOL(PrescriptionView::ID_GET_PRESCRIPTION_SOURCES, PrescriptionView::OnGetPrescriptionSources)
 EVT_CHOICE(PrescriptionView::ID_PRESCRIPTION_SOURCE, PrescriptionView::OnPrescriptionChoiceChange)
 END_EVENT_TABLE()
 
@@ -52,6 +53,8 @@ void PrescriptionView::CreateToolBar()
 		});
 	mPrescriptionSourceChoiceBox->SetHelpText("Select Prescription Source");
 	mPrescriptionSourceChoiceBox->SetLabelText("Select Prescription Source");
+	bar->AddTool(ID_GET_PRESCRIPTION_SOURCES, wxT("Prescription source"),
+		wxArtProvider::GetBitmap("download"));
 
 	bar->AddStretchSpacer();
 	bar->AddTool(ID_ADD_PRESCRIPTION, wxT("Add fake prescription"), wxArtProvider::GetBitmap("action_add"));
@@ -131,13 +134,46 @@ void PrescriptionView::CreatePrescriptionSourceChoice()
 	if (!mPrescriptionSourceChoiceBox) {
 		spdlog::get("log")->error("Cannot create prescription choice");
 	}
-	//send a get request to the server to get all the prescrption sources 
-	auto sp = std::make_shared<nl::session<http::empty_body>>(NetworkContextInstance::instance());
+	//start session
+	auto sp = std::make_shared<nl::session<http::string_body>>(NetworkManagerInstance::instance().GetIoContex());
 	if (sp) {
 		//for now, later the source path would contain the pharmacy id which would used by the server to get sources in the
 		//area or the locations that are closer to the pharmacy
-		sp->get("localhost", "3000", "/prescriptions/sources/all", std::bind(&PrescriptionView::OnPrscriptionSource, this, std::placeholders::_1),
-				std::bind(&PrescriptionView::OnError, this, std::placeholders::_1));
+
+		//send a get request to the server to get all the prescrption sources 
+		auto future = sp->req<http::verb::get>("localhost", "3000", "/prescriptions/sources/all");
+		std::future_status status;
+		wxProgressDialog dialog("Prescription Source", 
+			fmt::format("Connecting to {}", "localhost"),
+			100,
+			this, 
+			wxPD_APP_MODAL | wxPD_CAN_ABORT);
+		std::chrono::milliseconds duration(30);
+		bool cont = true;
+		int i = 0;
+		do {
+			status = future.wait_for(duration);
+			cont = dialog.Update( i + duration.count(), fmt::format("Waiting on {}", "localhost"));
+			if (!cont) {
+				if (wxMessageBox("Do really want to cancel",
+					"Prescription Source", wxICON_WARNING | wxYES_NO) == wxYES) {
+					sp->cancel();
+					break;
+				}
+			}
+		} while (status != std::future_status::ready);
+
+		try {
+			auto string_data = future.get();
+			OnPrscriptionSource(js::json::parse(string_data));
+		}
+		catch (const nl::session_error& error) {
+			const beast::error_code& ec = error.error_code();
+			if(ec != beast::errc::operation_canceled) {
+				wxMessageBox(fmt::format("{}, {:d}", ec.message(), ec.value()),
+					"Prescription Source", wxICON_ERROR | wxOK);
+			}
+		}
 	}
 }
 
@@ -272,6 +308,56 @@ void PrescriptionView::OnSearchforPrescription(wxCommandEvent& evt)
 {
 }
 
+void PrescriptionView::OnGetPrescriptionSources(wxCommandEvent& evt)
+{
+	//this is where communication occurs with the server
+	if (!mPrescriptionSourceChoiceBox) {
+		spdlog::get("log")->error("Cannot create prescription choice");
+	}
+	//start session
+	auto sp = std::make_shared<nl::session<http::string_body>>(NetworkManagerInstance::instance().GetIoContex());
+	if (sp) {
+		//for now, later the source path would contain the pharmacy id which would used by the server to get sources in the
+		//area or the locations that are closer to the pharmacy
+
+		//send a get request to the server to get all the prescrption sources 
+		auto future = sp->req<http::verb::get>("localhost", "3000", "/prescriptions/sources/all");
+		std::future_status status;
+		wxProgressDialog dialog("Prescription Source",
+			fmt::format("Connecting to {}", "localhost"),
+			100,
+			this,
+			wxPD_APP_MODAL | wxPD_CAN_ABORT);
+		std::chrono::seconds duration(5);
+		bool cont = true;
+		int i = 0;
+		do {
+			status = future.wait_for(duration);
+			cont = dialog.Update(i + duration.count(), fmt::format("Waiting on {}", "localhost"));
+			if (!cont) {
+				if (wxMessageBox("Do really want to cancel",
+					"Prescription Source", wxICON_WARNING | wxYES_NO) == wxYES) {
+					sp->cancel();
+					break;
+				}
+			}
+		} while (status != std::future_status::ready);
+
+		try {
+			auto string_data = future.get();
+			OnPrscriptionSource(js::json::parse(string_data));
+		}
+		catch (const nl::session_error& error) {
+			const beast::error_code& ec = error.error_code();
+			if (ec != beast::errc::operation_canceled) {
+				wxMessageBox(fmt::format("{}, {:d}", ec.message(), ec.value()),
+					"Prescription Source", wxICON_ERROR | wxOK);
+			}
+		}
+	}
+
+}
+
 
 
 void PrescriptionView::OnPrescriptionActivated(wxDataViewEvent& evt)
@@ -331,4 +417,5 @@ void PrescriptionView::OnPrscriptionSource(const nl::js::json& res)
 
 void PrescriptionView::OnError(const std::string& what)
 {
+
 }

@@ -42,6 +42,7 @@ public:
 		ID_REFRESH,
 		ID_PSCHOICE,
 		ID_PRESCRIPTION_SOURCE,
+		ID_GET_PRESCRIPTION_SOURCES,
 		ID_BACK
 	};
 
@@ -73,7 +74,7 @@ private:
 	void OnRefresh(wxCommandEvent& evt);
 	void OnPrescriptionChoiceChange(wxCommandEvent& evt);
 	void OnSearchforPrescription(wxCommandEvent& evt);
-
+	void OnGetPrescriptionSources(wxCommandEvent& evt);
 	//evts 
 	void OnPrescriptionActivated(wxDataViewEvent& evt);
 	void OnBack(wxCommandEvent& evt);

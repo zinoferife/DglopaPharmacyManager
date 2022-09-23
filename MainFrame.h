@@ -83,6 +83,7 @@ private:
 	void CreateDataView();
 	void CreateTestUser();
 	void CreateDatabaseMgr();
+	void CreateNetworkManger();
 	void Settings();
 	
 

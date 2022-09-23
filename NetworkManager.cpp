@@ -1,7 +1,7 @@
 #include "common.h"
 #include "NetworkManager.h"
 
-NetworkManager::NetworkManager(const std::string& hostname, std::uint16_t port)
+NetworkManager::NetworkManager()
 {
 	
 
@@ -9,56 +9,60 @@ NetworkManager::NetworkManager(const std::string& hostname, std::uint16_t port)
 
 NetworkManager::~NetworkManager()
 {
-	if (!mStopCondition.load()) {
-		mStopCondition.store(true);
+	if (mNetThread.joinable()) {
+		m_work.reset(nullptr);
+		mNetThread.join();
 	}
 }
 
-void NetworkManager::Stop()
+void NetworkManager::Stop() 
 {
 	if (!mStopCondition.load()) {
 		mStopCondition.store(true);
 	}
 }
 
-void NetworkManager::Addervice(const std::string& service_name, const std::string& service_addr, std::uint16_t service_port)
+bool NetworkManager::AddService(const std::string& service_name, const std::string& service_addr, const std::string& service_port)
 {
+	auto [iter, insert] = mServices.insert({ service_name, {service_addr, service_port} });
+	return insert;
 }
 
 bool NetworkManager::RemoveService(const std::string& service_name)
 {
-	return false;
+	return(mServices.erase(service_name) != 0);
 }
 
-
-
-net::ip::tcp::endpoint NetworkManager::ToTcpEndpoint(const std::string& service) const
+std::string_view NetworkManager::GetServiceAddress(const std::string& serv_name) const
 {
-	auto iter = mServices.find(service);
+	auto iter = mServices.find(serv_name);
 	if (iter != mServices.end()) {
-		auto& Addr = iter->second;
-		return net::ip::tcp::endpoint(net::ip::address::from_string(Addr.first), Addr.second);
+		return iter->second.first.c_str();
 	}
-	return net::ip::tcp::endpoint{};
-
-
+	else {
+		return {};
+	}
 }
 
-net::ip::udp::endpoint NetworkManager::ToUdpEndpoint(const std::string& service_name) const
+std::string_view NetworkManager::GetSerivePort(const std::string& serv_name) const
 {
-	auto iter = mServices.find(service_name);
+	auto iter = mServices.find(serv_name);
 	if (iter != mServices.end()) {
-		auto& Addr = iter->second;
-		return net::ip::udp::endpoint(net::ip::address::from_string(Addr.first), Addr.second);
+		return iter->second.second.c_str();
 	}
-	return net::ip::udp::endpoint{};
+	else {
+		//what would be returned from here
+		return {};
+	}
 }
+
 
 void NetworkManager::Run()
 {
 	spdlog::get("log")->info("Starting network thread");
 	if (!mNetThread.joinable()) {
 		//thread is empty. Default constructed
+		m_work = std::make_unique<net::io_context::work>(mIoContext);
 		mNetThread = std::thread { [this]() { mIoContext.run(); } };
 	}
 }
@@ -66,6 +70,7 @@ void NetworkManager::Run()
 void NetworkManager::Join()
 {
 	if(mNetThread.joinable()){
+		m_work.reset(nullptr);
 		mNetThread.join();
 	}
 }
