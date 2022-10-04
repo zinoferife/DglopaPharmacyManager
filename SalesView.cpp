@@ -24,6 +24,7 @@ SalesView::SalesView(wxWindow* parent, wxWindowID id, const wxPoint& pos, const 
 	CreateTopToolBar();
 	CreateBottomToolBar();
 	CreateDataView();
+	CreateSalesOutput();
 	SetDefaultAuiArt();
 	mDataView->SetDropTarget(CreateDropTarget<SalesView>(this, Products::row_t{}));
 	mViewManager->Update();
@@ -90,6 +91,19 @@ void SalesView::CreateSpecialColHandlers()
 	});
 }
 
+void SalesView::CreateSalesOutput()
+{
+	mSalesOutput = std::make_unique<SalesOutput>(this, ID_SALES_OUTPUT);
+	mViewManager->AddPane(mSalesOutput.get(),
+		wxAuiPaneInfo().Name("SalesOutput").Bottom().Resizable().MinSize(wxSize(-1, 120)).DockFixed()
+		.LeftDockable(false).RightDockable(false).Floatable(false).TopDockable(false).CloseButton(false)
+		.Show());
+	mSalesOutput->SetDiscountText("0");
+	mSalesOutput->SetTotalText("0.00");
+	mSalesOutput->SetChangeText("0.00");
+	mViewManager->Update();
+}
+
 void SalesView::SetDefaultAuiArt()
 {
 	wxColour colour = wxTheColourDatabase->Find("Aqua");
@@ -110,6 +124,11 @@ void SalesView::OnCheckOut(wxCommandEvent& evnt)
 	if (mSalesTable.empty()) {
 		wxMessageBox("No Products To Checkout", "Sales", wxICON_INFORMATION | wxOK);
 		return;
+	}
+	else {
+		wxMessageBox(fmt::format("You are to pay {}", mSalesOutput->GetTotalTextValue()),
+			"Sales", wxICON_INFORMATION | wxOK);
+		return; 
 	}
 }
 
@@ -201,11 +220,12 @@ void SalesView::DropData(const Products::row_t& product)
 	mSalesTable.notify<nl::notifications::add>(data);
 
 	size_t index = mSalesTable.get_index(data.row_iterator);
-	index++;
-	wxDataViewItem item(wxUIntToPtr(index));
+	wxDataViewItem item(wxUIntToPtr(++index));
 	mDataView->Select(item);
 	mDataView->EnsureVisible(item);
 	mDataView->SetFocus();
+
+	UpdateTotal();
 	Update();
 }
 
@@ -235,4 +255,24 @@ bool SalesView::CheckProductClass(const Products::row_t& row) const
 		}
 	}
 	return true;
+}
+
+void SalesView::UpdateTotal()
+{
+	if (mSalesTable.empty()) {
+		return;
+	}
+	float total = 0.0f;
+	float temp = 0.0f;
+	for (auto& record : mSalesTable) {
+		try {
+			temp = atof(nl::row_value<Sales::price>(record).c_str());
+		}catch(...){
+			spdlog::get("log")->critical("Invalid price {} in {} product, crital error",
+				nl::row_value<Sales::price>(record), GetProductNameByID(nl::row_value<Sales::product_id>(record)));
+			return;
+		}
+		total += temp * nl::row_value<Sales::amount>(record);
+	}
+	mSalesOutput->SetTotalText(fmt::format("{:.2f}", total));
 }

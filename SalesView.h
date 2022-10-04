@@ -23,6 +23,7 @@
 #include "DatabaseManger.h"
 #include "ListDisplayDialog.h"
 #include "DataModel.h"
+#include "SalesOutput.h"
 
 
 #include <nl_uuid.h>
@@ -48,6 +49,7 @@ public:
 		ID_DATA_VIEW = wxID_HIGHEST + 2000,
 		ID_CHECKOUT,
 		ID_SETTINGS,
+		ID_SALES_OUTPUT,
 		ID_ADD_PRODUCT
 
 	};
@@ -57,6 +59,7 @@ public:
 
 	void CreateDataView();
 	void CreateSpecialColHandlers();
+	void CreateSalesOutput();
 
 	void SetDefaultAuiArt();
 
@@ -74,7 +77,7 @@ public:
 	void DropData(const Products::row_t& row);
 	bool CheckInStock(const Products::row_t& row) const;
 	bool CheckProductClass(const Products::row_t& row) const;
-
+	void UpdateTotal();
 
 private:
 	std::unique_ptr<wxAuiManager> mViewManager;
@@ -83,6 +86,7 @@ private:
 	//dataview and model
 	std::unique_ptr<wxDataViewCtrl> mDataView;
 	std::unique_ptr<DataModel<Sales>> mModel;
+	std::unique_ptr<SalesOutput> mSalesOutput;
 	Sales mSalesTable;
 
 	DECLARE_EVENT_TABLE()

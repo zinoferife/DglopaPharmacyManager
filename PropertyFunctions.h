@@ -30,7 +30,7 @@ void EnumProperty(const wxVariant& value, size_t column, Instance& instance, typ
 	typename Instance::notification_data data;
 	data.row_iterator = iter;
 	data.column = column;
-	data.column_value = arr[value.GetInteger()];
+	data.column_value = std::string(arr[value.GetInteger()]);
 	instance.notify<nl::notifications::update>(data);
 }
 

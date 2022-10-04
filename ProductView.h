@@ -65,6 +65,7 @@ public:
 		ID_SEARCH_BY_PRICE,
 		ID_SEARCH_BY_NAME,
 		ID_GROUP_BY,
+		ID_ADD_CATEGORY,
 		ID_REMOVE_GROUP_BY,
 		ID_QUICK_SORT_TEST,
 		ID_INVENTORY_VIEW,
@@ -116,6 +117,7 @@ private:
 	void OnQuickSortTest(wxCommandEvent& evt);
 	void OnBack(wxCommandEvent& evt);
 	void OnFile(wxAuiToolBarEvent& evt);
+	void OnCategory(wxCommandEvent& evt);
 
 	
 	//evts for inventory view

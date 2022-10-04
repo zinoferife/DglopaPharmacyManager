@@ -5,7 +5,7 @@ EVT_TOOL(DetailView::ID_UPDATE, DetailView::OnUpdate)
 END_EVENT_TABLE()
 
 
-static std::array<std::string, 3> cls{ "POM", "P", "OTC" };
+static constexpr std::array<std::string_view, 3> cls{ "POM", "P", "OTC" };
 static inline int findClassIndex(const std::string& cl) {
 	//how to do this
 	for (int i = 0; i < cls.size(); i++) {
@@ -21,6 +21,7 @@ DetailView::DetailView(typename Products::elem_t<Products::id> product_id, wxWin
 
 DetailView::~DetailView()
 {
+	Clear();
 }
 
 void DetailView::CreatePropertyGrid(typename Products::elem_t<Products::id> product_id)

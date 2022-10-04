@@ -133,6 +133,7 @@ void PrescriptionView::CreatePrescriptionSourceChoice()
 	//this is where communication occurs with the server
 	if (!mPrescriptionSourceChoiceBox) {
 		spdlog::get("log")->error("Cannot create prescription choice");
+		return;
 	}
 	//start session
 	auto sp = std::make_shared<nl::session<http::string_body>>(NetworkManagerInstance::instance().GetIoContex());
@@ -140,6 +141,8 @@ void PrescriptionView::CreatePrescriptionSourceChoice()
 		//for now, later the source path would contain the pharmacy id which would used by the server to get sources in the
 		//area or the locations that are closer to the pharmacy
 
+		//still doesnt feel right,
+		//the wait is still long and the cancel dont return a 
 		//send a get request to the server to get all the prescrption sources 
 		auto future = sp->req<http::verb::get>("localhost", "3000", "/prescriptions/sources/all");
 		std::future_status status;
@@ -148,11 +151,10 @@ void PrescriptionView::CreatePrescriptionSourceChoice()
 			100,
 			this, 
 			wxPD_APP_MODAL | wxPD_CAN_ABORT);
-		std::chrono::milliseconds duration(30);
+		std::chrono::milliseconds duration(3);
 		bool cont = true;
 		int i = 0;
 		do {
-			status = future.wait_for(duration);
 			cont = dialog.Update( i + duration.count(), fmt::format("Waiting on {}", "localhost"));
 			if (!cont) {
 				if (wxMessageBox("Do really want to cancel",
@@ -161,10 +163,12 @@ void PrescriptionView::CreatePrescriptionSourceChoice()
 					break;
 				}
 			}
+			status = future.wait_for(duration);
 		} while (status != std::future_status::ready);
 
 		try {
 			auto string_data = future.get();
+			dialog.Update(100, fmt::format("Successful"));
 			OnPrscriptionSource(js::json::parse(string_data));
 		}
 		catch (const nl::session_error& error) {

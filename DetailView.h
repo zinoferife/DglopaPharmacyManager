@@ -30,7 +30,7 @@ public:
 
 	DetailView(typename Products::elem_t<Products::id> product_id, wxWindow* parent, wxWindowID id, const wxPoint& position = wxDefaultPosition,
 		const wxSize& size = wxDefaultSize, long style = wxPG_BOLD_MODIFIED | wxPG_SPLITTER_AUTO_CENTER | wxPG_TOOLBAR | wxPG_DESCRIPTION | wxPGMAN_DEFAULT_STYLE);
-	~DetailView();
+	virtual ~DetailView();
 
 	void CreatePropertyGrid(typename Products::elem_t<Products::id> product_id);
 	void CreateToolBar();
@@ -45,7 +45,7 @@ public:
 	constexpr bool IsCreated() const { return mCreated; }
 private:
 	bool mCreated;
-	std::unordered_map<std::string, std::function<void(const wxVariant& value)>> mPropertyToValueCallback;
+	std::unordered_map<std::string_view, std::function<void(const wxVariant& value)>> mPropertyToValueCallback;
 	DECLARE_EVENT_TABLE()
 };
 

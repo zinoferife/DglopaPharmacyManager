@@ -8,10 +8,11 @@ END_EVENT_TABLE()
 SignInDialog::SignInDialog(wxWindow* parent, ActiveUser* user)
 : wxDialog(parent, wxID_ANY, "SIGN IN"), mUser(user){
 	SetBackgroundColour(*wxWHITE);
-	wxStaticText* texts[3];
+	wxStaticText* texts[4];
 	texts[0] = new wxStaticText;
 	texts[1] = new wxStaticText;
 	texts[2] = new wxStaticText;
+
 
 	texts[0]->Create(this, wxID_ANY, "Please enter username and password");
 	texts[1]->Create(this, wxID_ANY, "Username: ");
@@ -28,16 +29,17 @@ SignInDialog::SignInDialog(wxWindow* parent, ActiveUser* user)
 
 
 	flexSizer->Add(texts[1], wxSizerFlags().Align(wxLEFT));
-	flexSizer->Add(mUserNameCtrl, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
+	flexSizer->Add(mUserNameCtrl, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5).Expand());
 
 	flexSizer->Add(texts[2], wxSizerFlags().Align(wxLEFT));
-	flexSizer->Add(mPasswordCtrl, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
+	flexSizer->Add(mPasswordCtrl, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5).Expand());
 
 	okCancleSizer->AddStretchSpacer();
 	okCancleSizer->Add(mOk, wxSizerFlags().Align(wxALIGN_CENTER_VERTICAL).Border(wxALL, 5));
 	okCancleSizer->Add(mCancel, wxSizerFlags().Align(wxALIGN_CENTER_VERTICAL).Border(wxALL, 5));
 	
 	boxSizer->Add(texts[0], wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
+	boxSizer->AddStretchSpacer();
 	boxSizer->Add(flexSizer, wxSizerFlags().Align(wxLEFT).Border(wxALL, 5));
 	boxSizer->Add(okCancleSizer, wxSizerFlags().Expand().Border(wxALL, 5));
 

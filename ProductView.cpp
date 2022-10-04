@@ -9,6 +9,7 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_TOOL(ProductView::ID_QUICK_SORT_TEST, ProductView::OnQuickSortTest)
 	EVT_TOOL(ProductView::ID_EXPIRY_VIEW, ProductView::OnExpiryView)
 	EVT_TOOL(ProductView::ID_TO_JSON, ProductView::OnToJson)
+	EVT_TOOL(ProductView::ID_ADD_CATEGORY, ProductView::OnCategory)
 	EVT_AUITOOLBAR_TOOL_DROPDOWN(ProductView::ID_FILE, ProductView::OnFile)
 	EVT_MENU(ProductView::ID_SELECT_MULTIPLE, ProductView::OnSelectMultiple)
 	EVT_MENU(ProductView::ID_UNSELECT_MULTIPLE, ProductView::OnUnSelectMultiple)
@@ -101,11 +102,12 @@ void ProductView::CreateToolBar()
 		}
 	});
 	bar->AddSeparator();
-	bar->AddTool(ID_EXPIRY_VIEW, wxT("Expired products"), wxArtProvider::GetBitmap("bandage"));
-	bar->AddTool(ID_GROUP_BY, wxT("Out of stock"), wxArtProvider::GetBitmap("bag"));
+	bar->AddTool(ID_EXPIRY_VIEW, wxT("Expired Products"), wxArtProvider::GetBitmap("bandage"));
+	bar->AddTool(ID_GROUP_BY, wxT("Out Of Stock"), wxArtProvider::GetBitmap("bag"));
 	bar->AddTool(ID_REMOVE_GROUP_BY, wxT("Reset"), wxArtProvider::GetBitmap("minimize"));
-	bar->AddTool(ID_ADD_PRODUCT, wxT("Add product"), wxArtProvider::GetBitmap("action_add"));
-	bar->AddTool(ID_REMOVE_PRODUCT, wxT("Remove product"), wxArtProvider::GetBitmap("action_remove"));
+	bar->AddTool(ID_ADD_PRODUCT, wxT("Add Product"), wxArtProvider::GetBitmap("action_add"));
+	bar->AddTool(ID_ADD_CATEGORY, wxT("Add Category"), wxArtProvider::GetBitmap("action_add"));
+	bar->AddTool(ID_REMOVE_PRODUCT, wxT("Remove Product"), wxArtProvider::GetBitmap("action_remove"));
 	bar->AddTool(ID_TO_JSON, wxT("Statistics"), wxArtProvider::GetBitmap("save"));
 
 	//realise and add to manager
@@ -501,6 +503,25 @@ void ProductView::OnFile(wxAuiToolBarEvent& evt)
 		menu->Append(ID_UNSELECT_MULTIPLE, "unselect");
 		PopupMenu(menu);
 	}
+}
+
+void ProductView::OnCategory(wxCommandEvent& evt)
+{
+	wxTextEntryDialog dialog(this, "Please enter the name of the category: ",
+		"Create New Category");
+	if (dialog.ShowModal() == wxID_OK) {
+		std::string CatName = dialog.GetValue().ToStdString();
+		if (CatName.empty()) {
+			wxMessageBox("Cannot add an empty category", "Create category", wxICON_ERROR | wxOK);
+		}
+		else {
+			auto iter = CategoriesInstance::instance().add(GenRandomId(), CatName);
+			Categories::notification_data data;
+			data.row_iterator = iter;
+			CategoriesInstance::instance().notify(nl::notifications::add, data);
+		}	
+	}
+
 }
 
 
