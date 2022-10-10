@@ -117,6 +117,10 @@ private:
 
 private:
 	
+	//tempoary 
+	//this would come from the config that is written during the 
+	//set up wizard
+	std::string mNameOFPharmacy;
 
 	//debug
 	template<typename func>

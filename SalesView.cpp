@@ -9,6 +9,7 @@ EVT_DATAVIEW_ITEM_EDITING_STARTED(SalesView::ID_DATA_VIEW, SalesView::OnEditingS
 EVT_DATAVIEW_ITEM_EDITING_DONE(SalesView::ID_DATA_VIEW, SalesView::OnEditingDone)
 END_EVENT_TABLE()
 
+std::string SalesView::mEmptyString{};
 
 SalesView::~SalesView()
 {
@@ -119,6 +120,10 @@ void SalesView::SetDefaultAuiArt()
 	mViewManager->SetFlags(mViewManager->GetFlags() | wxAUI_MGR_ALLOW_ACTIVE_PANE | wxAUI_MGR_VENETIAN_BLINDS_HINT);
 }
 
+void SalesView::SetSpecicalColumns()
+{
+}
+
 void SalesView::OnCheckOut(wxCommandEvent& evnt)
 {
 	if (mSalesTable.empty()) {
@@ -139,7 +144,14 @@ void SalesView::OnReturn(wxCommandEvent& evnt)
 
 void SalesView::OnAddProduct(wxCommandEvent& evnt)
 {
-	wxMessageBox("Add product", "Sales", wxICON_INFORMATION | wxOK);
+	SearchProduct product(this, wxID_ANY);
+	if (product.ShowModal() == wxID_OK) {
+		GetDataFromProductSearch(product.GetSelectedProduct());
+	}
+	else {
+		spdlog::get("log")->info("This is not a product");
+	}
+
 }
 
 void SalesView::OnEditingStarted(wxDataViewEvent& evt)
@@ -171,13 +183,17 @@ void SalesView::OnEditingStarting(wxDataViewEvent& evt)
 void SalesView::OnEditingDone(wxDataViewEvent& evt)
 {
 	auto dataItem = evt.GetItem();
+	auto var = evt.GetValue();
 	if (dataItem.IsOk()) {
 		auto index = mModel->GetDataViewItemIndex(dataItem);
 		if (index == wxNOT_FOUND) {
 			spdlog::get("log")->error("Invalid Item in sales Table");
 			return;
 		}
-		spdlog::get("log")->info("Editing done on {:d}", nl::row_value<Sales::product_id>(mSalesTable[index]));
+
+		spdlog::get("log")->info("Editing done on {:d}, new value {:d}", nl::row_value<Sales::product_id>(mSalesTable[index]),
+			var.GetLong());
+		StoreEditedValue(evt.GetValue(), dataItem, 1);
 	}
 }
 
@@ -187,7 +203,7 @@ const std::string& SalesView::GetProductNameByID(Sales::elem_t<Sales::product_id
 	auto& p = ProductInstance::instance();
 	auto iter = p.find_on<Products::id>(id);
 	if (iter == p.end()) {
-		return std::string{};
+		return mEmptyString;
 	}
 	else {
 		return nl::row_value<Products::name>(*iter);
@@ -255,6 +271,41 @@ bool SalesView::CheckProductClass(const Products::row_t& row) const
 		}
 	}
 	return true;
+}
+
+void SalesView::GetDataFromProductSearch(const SearchProduct::view_t::row_t& SelectedRow)
+{
+	Sales::row_t row;
+
+	nl::row_value<Sales::product_id>(row) = nl::row_value<0>(SelectedRow);
+	nl::row_value<Sales::user_id>(row) = 64;
+	nl::row_value<Sales::customer_id>(row) = 64;
+	nl::row_value<Sales::price>(row) = nl::row_value<2>(SelectedRow);
+	nl::row_value<Sales::amount>(row) = 1;
+	nl::row_value<Sales::date>(row) = nl::clock::now();
+
+	Sales::notification_data data;
+	data.row_iterator = mSalesTable.add(row);
+	mSalesTable.notify<nl::notifications::add>(data);
+
+	size_t index = mSalesTable.get_index(data.row_iterator);
+	wxDataViewItem item(wxUIntToPtr(++index));
+	mDataView->Select(item);
+	mDataView->EnsureVisible(item);
+	mDataView->SetFocus();
+
+	UpdateTotal();
+	Update();
+
+}
+
+void SalesView::StoreEditedValue(const wxVariant& data, const wxDataViewItem& item, size_t col)
+{
+	if (!item.IsOk()) return;
+	mModel->SetValue(data, item, col);
+	mModel->ValueChanged(item, col);
+	UpdateTotal();
+	Update();
 }
 
 void SalesView::UpdateTotal()

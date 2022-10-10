@@ -17,6 +17,10 @@ END_EVENT_TABLE()
 
 MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size)
 : wxFrame(parent,id, "Afrobug PharmaOffice", position, size){
+	
+	//temp
+	mNameOFPharmacy = "D-Glopa Pharmacy";
+
 	mFrameManager = std::make_unique<wxAuiManager>(this);
 	CreateLogBook();
 	SetMainFrameArt();
@@ -46,6 +50,10 @@ MainFrame::MainFrame(wxWindow* parent, wxWindowID id, const wxPoint& position, c
 
 	mFrameManager->Update();
 	mLog->info("Main frame constructed sucessfully");
+	
+
+
+
 	wxIcon appIcon;
 	appIcon.CopyFromBitmap(wxArtProvider::GetBitmap("dglopalogo"));
 	SetIcon(appIcon);
@@ -74,6 +82,8 @@ void MainFrame::CreateToolBar()
 {
 	mToolBar.reset(new wxAuiToolBar(this, ID_TOOL, wxDefaultPosition, wxDefaultSize, wxAUI_TB_HORZ_TEXT));
 	mToolBar->SetToolBitmapSize(wxSize(16, 16));
+	mToolBar->AddTool(wxID_ANY, mNameOFPharmacy.data(), wxArtProvider::GetBitmap("medical-bottle"));
+	spdlog::get("log")->info("this is the name of the pharmacy {}", mNameOFPharmacy);
 	stretchspacer = mToolBar->AddStretchSpacer();
 
 	tool = mToolBar->AddTool(ID_TOOL_USER, wxT("Sign in"), wxArtProvider::GetBitmap("login"));

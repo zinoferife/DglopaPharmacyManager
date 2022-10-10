@@ -33,7 +33,7 @@
 
 
 #include "DropTarget.h"
-
+#include "SearchSaleProduct.h"
 
 
 class SalesView : public wxPanel
@@ -62,6 +62,7 @@ public:
 	void CreateSalesOutput();
 
 	void SetDefaultAuiArt();
+	void SetSpecicalColumns(); //set for writing the quanity that can be editited.
 
 public:
 	void OnCheckOut(wxCommandEvent& evnt);
@@ -76,12 +77,22 @@ public:
 
 	void DropData(const Products::row_t& row);
 	bool CheckInStock(const Products::row_t& row) const;
+	bool CheckInStock(const SearchProduct::view_t::row_t& row) const;
 	bool CheckProductClass(const Products::row_t& row) const;
+	bool CheckProductClass(const SearchProduct::view_t::row_t& row) const;
+	void GetDataFromProductSearch(const SearchProduct::view_t::row_t& SelectedRow);
+	void StoreEditedValue(const wxVariant& data, const wxDataViewItem& item, 
+			size_t col);
 	void UpdateTotal();
 
 private:
 	std::unique_ptr<wxAuiManager> mViewManager;
+	
+	//this would come from settings
 	bool mPOMwarningMessage = false;
+
+	//so i cam return empty strings
+	static std::string mEmptyString;
 
 	//dataview and model
 	std::unique_ptr<wxDataViewCtrl> mDataView;

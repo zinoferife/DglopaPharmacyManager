@@ -23,19 +23,24 @@
 #include <wx/aui/auibar.h>
 #include <wx/dataview.h>
 #include <wx/sizer.h>
+#include <wx/button.h>
 #include <wx/panel.h>
 #include <wx/frame.h>
 
 #include <wx/dialog.h>
 ///////////////////////////////////////////////////////////////////////////
-
+#include <rel_view.h>
+#include "Instances.h"
+#include "Searcher.h"
+#include "DataModelBase.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Class SearchProduct
 ///////////////////////////////////////////////////////////////////////////////
 class SearchProduct : public wxDialog
 {
-private:
+public:
+	typedef nl::rel_view<std::uint64_t, std::string, std::string> view_t;
 
 protected:
 	wxAuiToolBar* SearchProductBar;
@@ -46,6 +51,13 @@ protected:
 	wxDataViewColumn* ProductIdCol;
 	wxDataViewColumn* ProductName;
 	wxDataViewColumn* PriceCol;
+
+	
+
+	//id, name, price
+	view_t ProductView;
+	DataModel<view_t>* mModel;
+	size_t mSelectedProduct;
 
 public:
 	enum {
@@ -62,11 +74,22 @@ public:
 
 	void CreateToolBar();
 	void CreateSearchView();
+	void CreateViewManagerDefaultArt();
 
+	void SetUpView();
+	void SetUpView(std::vector<size_t> idx);
 
+	inline view_t::row_t GetSelectedProduct() const	{
+		return ProductView[mSelectedProduct];
+	}
 protected:
 	void OnItemSelected(wxDataViewEvent& evt);
 	void OnActivated(wxDataViewEvent& evt);
+	void OnSearch(wxCommandEvent& evt);
+	void OnSearchCancelled(wxCommandEvent& evt);
+	void OnClose(wxCloseEvent& evt);
+
+	void DoSearch(const std::string& search_for);
 
 	DECLARE_EVENT_TABLE()
 };

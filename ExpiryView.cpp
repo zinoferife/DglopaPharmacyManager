@@ -13,7 +13,7 @@ END_EVENT_TABLE()
 
 
 ExpiryView::ExpiryView(wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize& size)
-: wxDialog(parent, id, "EXPIRY MODULE", position, size, wxCAPTION | wxRESIZE_BORDER | wxSYSTEM_MENU ){
+: wxDialog(parent, id, "EXPIRY MODULE", position, size, wxDEFAULT_FRAME_STYLE ){
 	CreateViewManger();
 	SetViewArt();
 	CreateToolBar();
@@ -224,6 +224,9 @@ void ExpiryView::OnSearchCleared(wxCommandEvent& evt)
 
 void ExpiryView::OnClose(wxCloseEvent& evt)
 {
+	mSearchBar->Destroy();
+
+	SetReturnCode(wxID_CANCEL);
 	evt.Skip();
 }
 
