@@ -2,7 +2,7 @@
 #include <Singleton.h>
 #include "Tables.h"
 #include <Database.h>
-
+#include "SignalManager.h"
 #include "PrintManager.h"
 #include "NetworkManager.h"
 #include <random>
@@ -22,6 +22,8 @@ typedef nl::singleton_holder<TrackList> TrackListInstance;
 typedef nl::singleton_holder<nl::database> DatabaseInstance;
 typedef nl::singleton_holder<PrintManager> PrinterInstance;
 typedef nl::singleton_holder<NetworkManager> NetworkManagerInstance;
+
+typedef DatabaseSignalManager<Inventories> InventoriesDatabaseSignal;
 
 //generates random Ids between one millon and 10 millon, They do not need to be universally unique
 //just unique inthe context of the table that the ids in

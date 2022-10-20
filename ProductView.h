@@ -146,6 +146,7 @@ private:
 
 	void RegisterNotification();
 	void UnregisterNotification();
+	void ConnectDatabaseSignals();
 	void OnInventoryAddNotification(const Inventories::table_t& table, const Inventories::notification_data& data);
 	void OnUsersNotification(const Users::table_t& table, const Users::notification_data& data);
 	void OnCategoryAddNotification(const Categories::table_t& table, const Categories::notification_data& data);
@@ -160,6 +161,11 @@ private:
 	void OnToJson(wxCommandEvent& evt);
 	typedef nl::tuple_json<Products::row_t> product_json_converter;
 	void InitJsonConverter();
+
+	//database signals
+	void OnDatabaseInventorySignal(InventoriesDatabaseSignal::PrimaryKey_t key,
+				InventoriesDatabaseSignal::DSM_FUNC func, size_t col);
+
 private:
 	//for test 
 	std::bitset<3> mSearchFlags;

@@ -49,6 +49,7 @@ ProductView::ProductView(wxWindow* parent, wxWindowID id, const wxPoint& positio
 :wxPanel(parent, id, position, size){
 	mPanelManager = std::make_unique<wxAuiManager>(this);
 	RegisterNotification();
+	ConnectDatabaseSignals();
 	CreateItemAttr();
 	SetDefaultArt();
 	CreateToolBar();
@@ -873,6 +874,14 @@ void ProductView::UnregisterNotification()
 	ProductDetailsInstance::instance().sink<nl::notifications::update>().remove_listener<ProductView, & ProductView::OnProductDetailUpdateNotification>(this);
 }
 
+void ProductView::ConnectDatabaseSignals()
+{
+	InventoriesDatabaseSignal::Connect(std::bind(&ProductView::OnDatabaseInventorySignal, this,
+		std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
+
+}
+
 void ProductView::OnInventoryAddNotification(const Inventories::table_t& table, const Inventories::notification_data& data)
 {
 	uint32_t balance = nl::row_value<Inventories::balance>(*data.row_iterator);
@@ -1058,6 +1067,44 @@ void ProductView::InitJsonConverter()
 		names[i] = ProductInstance::instance().get_name(i);
 	}
 	product_json_converter::set_all_state();
+}
+
+void ProductView::OnDatabaseInventorySignal(InventoriesDatabaseSignal::PrimaryKey_t key, 
+	InventoriesDatabaseSignal::DSM_FUNC func, size_t col)
+{
+	switch (func) {
+	case InventoriesDatabaseSignal::DSM_FUNC::DSM_INSERT:
+		try {
+			nl::query q;
+			q.select("*").from(Inventories::table_name).where(fmt::format("{} = {:d}",
+				Inventories::get_col_name<Inventories::id>(), key));
+			auto stat = DatabaseInstance::instance().prepare_query(q);
+			auto row = DatabaseInstance::instance().retrive_row<Inventories::row_t>(stat);
+			DatabaseInstance::instance().remove_statement(stat);
+
+			uint32_t balance = nl::row_value<Inventories::balance>(row);
+			auto it = ProductInstance::instance().find_on<Products::id>(nl::row_value<Inventories::product_id>(row));
+			if (it != ProductInstance::instance().end())
+			{
+				nl::row_value<Products::stock_count>(*it) = balance;
+
+				Products::notification_data data_p{};
+				data_p.row_iterator = it;
+				data_p.column = Products::stock_count;
+				ProductInstance::instance().notify(nl::notifications::update, data_p);
+				mModel->RemoveAttribute(nl::row_value<Products::id>(*it));
+				mDatabaseMgr->UpdateTable(nl::row_value<Products::id>(*it), ProductInstance::instance().get<Products::stock_count>(it),
+					Products::get_col_name<Products::stock_count>());
+			}
+		}
+		catch (nl::database_exception& exp) {
+			spdlog::get("log")->critical(exp.what());
+		}
+		break;
+	default:
+		break;
+	}
+
 }
 
 

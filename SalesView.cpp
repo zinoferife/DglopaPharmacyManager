@@ -408,10 +408,10 @@ void SalesView::StoreDataInInventory()
 	if (mSalesTable.empty()) {
 		return;
 	}
-	std::uint64_t id = GenRandomId();
 	std::uint64_t receptNumber = GenRandomId();
 	nl::date_time_t now = nl::clock::now();
 	for (auto& row : mSalesTable) {
+		std::uint64_t id = GenRandomId();
 		auto inven_row = MostRecentInventoryEntry(nl::row_value<Sales::product_id>(row));
 		//DEBUG
 		spdlog::get("log")->info("id {:d}, balance: {:d}",
@@ -427,7 +427,10 @@ void SalesView::StoreDataInInventory()
 			 0, 0 });
 	}
 	mInvetoryDatabasemagr->FlushTable();
-
+	for (auto& irow : mTempInventoryRel){
+		InventoriesDatabaseSignal::Signal( nl::row_value<Inventories::id>(irow), InventoriesDatabaseSignal::DSM_FUNC::DSM_INSERT,0);
+	}
+	mTempInventoryRel.clear();
 }
 
 Inventories::row_t SalesView::MostRecentInventoryEntry(Products::elem_t<Products::id> id)

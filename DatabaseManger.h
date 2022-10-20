@@ -201,7 +201,6 @@ public:
 	void FlushTable() {
 		//insert the table to the database and clear the table;
 		InsertTable(mTable);
-		mTable.clear();
 	}
 
 
