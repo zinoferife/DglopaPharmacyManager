@@ -137,13 +137,13 @@ void ExpiryView::CreateTableView()
 		spdlog::get("log")->error("{}", error.what());
 		return;
 	}
-	if (!mDatabaseManger->AddQuery("load", q)){
+	if (!mDatabaseManger->AddQuery("load"s, q)){
 		spdlog::get("log")->error("invalid query {}", q.get_query());
 		return;
 	}
 	//loads the query into table
 	mTimePoint = nl::clock::now();
-	mDatabaseManger->BindOnStatement("load", std::tuple<nl::date_time_t>{mTimePoint}, "time");
+	mDatabaseManger->BindOnStatement("load", std::tuple<nl::date_time_t>{mTimePoint}, "time"s);
 	mDatabaseManger->LoadTable();
 	mTopBar->Freeze();
 	auto DateStatus = fmt::format("Expires before: {}", nl::to_string_date(mTimePoint));
@@ -275,7 +275,7 @@ void ExpiryView::OnApply(wxCommandEvent& evt)
 			date = nl::clock::from_time_t(std::mktime(&time_tm));
 			ExpireTable.clear();
 			ExpireTable.notify<nl::notifications::clear>({});
-			mDatabaseManger->BindOnStatement("load", std::tuple<nl::date_time_t>{date}, "time");
+			mDatabaseManger->BindOnStatement("load", std::tuple<nl::date_time_t>{date}, "time"s);
 			try {
 				spdlog::get("log")->info("{}", nl::to_string_date(date));
 			}
@@ -296,7 +296,7 @@ void ExpiryView::OnApply(wxCommandEvent& evt)
 	}
 	ExpireTable.clear();
 	ExpireTable.notify<nl::notifications::clear>({});
-	mDatabaseManger->BindOnStatement("load", std::tuple<nl::date_time_t>{time_points[selection]}, "time");
+	mDatabaseManger->BindOnStatement("load", std::tuple<nl::date_time_t>{time_points[selection]}, "time"s);
 	spdlog::get("log")->info("{}", nl::to_string_date(time_points[selection]));
 	mDatabaseManger->LoadTable();
 	mTopBar->Freeze();

@@ -5,13 +5,11 @@ InventoryView::InventoryView(std::uint64_t ProductID, wxWindow* parent, wxWindow
 	: wxListCtrl(parent, id, position, size, wxLC_REPORT | wxLC_VIRTUAL | wxLC_HRULES | wxNO_BORDER), mProductId(ProductID), mSortColumn{-1}{
 
 	mDatabaseMgr = std::make_unique<DatabaseManager<Inventories>>(mProductInventoryData, DatabaseInstance::instance());
-	nl::query q;
-	q.select("*").from(Inventories::table_name).where(fmt::format("{} = \'{:d}\'", 
-		Inventories::get_col_name<Inventories::product_id>(), ProductID));
-	spdlog::get("log")->info("{}", q.get_query());
-	mDatabaseMgr->AddQuery("load", q);
+	
+
+
 	mDatabaseMgr->CreateTable();
-	mDatabaseMgr->LoadTable();
+	LoadInventory(nl::clock::now());
 
 	mProductInventoryData.quick_sort<Inventories::date_issued, nl::order_dec<Inventories::elem_t<Inventories::date_issued>>>();
 	CreateInventoryView();
@@ -20,13 +18,11 @@ InventoryView::InventoryView(std::uint64_t ProductID, wxWindow* parent, wxWindow
 	CreateAttributes();
 	SetItemCount(mProductInventoryData.size());
 	mSortColOrder.reset();
-	//set mProductINventoryData notificatiions
-	mProductInventoryData.sink<nl::notifications::add>().add_listener<InventoryView, & InventoryView::OnAddNotification>(this);
+
 }
 
 InventoryView::~InventoryView()
 {
-	mProductInventoryData.sink<nl::notifications::add>().remove_listener<InventoryView, &InventoryView::OnAddNotification>(this);
 }
 
 void InventoryView::OnColumnHeaderClick(wxListEvent& evt)
@@ -54,6 +50,7 @@ void InventoryView::OnRightClick(wxListEvent& evt)
 
 void InventoryView::OnItemActivated(wxListEvent& evt)
 {
+
 }
 
 void InventoryView::OnAddInventory(wxCommandEvent& evt)
@@ -74,9 +71,9 @@ void InventoryView::OnAddInventory(wxCommandEvent& evt)
 			nl::row_value<Inventories::user_issued>(new_row) = 200345;
 			nl::row_value<Inventories::user_checked>(new_row) = 200345;
 
-			Inventories::notification_data data{};
-			data.row_iterator = InventoryInstance::instance().add(new_row);
-			mProductInventoryData.notify<nl::notifications::add>(data);
+			StoreInventory(new_row);
+			AddInOrder(new_row);
+
 			break;
 		}
 		else if(RetCode == wxID_CANCEL){
@@ -114,13 +111,7 @@ void InventoryView::CalculateBalance(Inventories::row_t& row)
 	nl::row_value<Inventories::balance>(row) = nl::row_value<Inventories::balance>(*max) + nl::row_value<Inventories::quantity_in>(row);
 }
 
-void InventoryView::OnAddNotification(const Inventories::table_t& table, const Inventories::notification_data& data)
-{
-	if (mProductId == nl::row_value<Inventories::product_id>(*(data.row_iterator)))
-	{
-		AddInOrder(*(data.row_iterator));
-	}
-}
+
 
 void InventoryView::AddInOrder(const Inventories::row_t& row)
 {
@@ -129,11 +120,13 @@ void InventoryView::AddInOrder(const Inventories::row_t& row)
 	else 
 		AddImage(nl::row_value<Inventories::id>(row), 0);
 
-	size_t date_issued = Inventories::date_issued - 2;
+	constexpr size_t date_issued = Inventories::date_issued - 2;
+
 	AddAttribute(nl::row_value<Inventories::id>(row), mJustAdded);
-	mProductInventoryData.add(row);
+	mProductInventoryData.add_in_order<Inventories::date_issued>(row);
 	mSortColOrder.set(date_issued, false);
-	mProductInventoryData.quick_sort<false>(Inventories::date_issued);
+	
+	
 	Freeze();
 	SetItemCount(mProductInventoryData.size());
 	Thaw();
@@ -145,6 +138,18 @@ void InventoryView::CreateAttributes()
 	mJustAdded = std::make_shared<wxListItemAttr>();
 	mJustAdded->SetBackgroundColour(wxColour(0, 255, 127));
 }
+
+void InventoryView::CreateLoadAllQuery()
+{
+	nl::query q;
+	q.select("*").from(Inventories::table_name).where(fmt::format("{} = \'{:d}\'",
+		Inventories::get_col_name<Inventories::product_id>(), mProductId));
+	spdlog::get("log")->info("{}", q.get_query());
+	mDatabaseMgr->AddQuery("loadall", q);
+
+	mDatabaseMgr->ChangeQuery("load", q);
+}
+
 
 void InventoryView::AddAttribute(std::vector<std::uint64_t>&& ids, std::shared_ptr<wxListItemAttr> attr)
 {
@@ -225,6 +230,62 @@ void InventoryView::ResetState()
 	mAttributesTable.clear();
 	mImageTable.clear();
 	mCheckedTable.clear();
+	mSortColOrder.reset();
+}
+
+void InventoryView::LoadInventory(const nl::date_time_t& date)
+{
+	nl::query loadQ;
+	//find the time bounded by {00:00am - 00:00am}
+	auto midnight = date - nl::time_since_midnight();
+	auto next_midnight = date + nl::time_to_midnight();
+
+	auto time_since_mid = nl::to_representation(midnight);
+	auto next_time_since_mid = nl::to_representation(next_midnight);
+
+	//loadQ.select("*").from(Inventories::table_name).where(fmt::format("{} = \'{:d}\'",
+	//	Inventories::get_col_name<Inventories::product_id>(), mProductId)).and_(fmt::format("{} > \'{:d}\' AND {} < \'{:d}\'",
+	//	Inventories::get_col_name<Inventories::date_issued>(),
+	//	time_since_mid,
+	//	Inventories::get_col_name<Inventories::date_issued>(),
+	//	next_time_since_mid));
+
+
+	loadQ.select("*").from(Inventories::table_name).where(fmt::format("{} = \'{:d}\'",
+		 Inventories::get_col_name<Inventories::product_id>(), mProductId));
+
+	//if using a server, send query to server to get the data from the server
+	
+
+	auto string = loadQ.get_query();
+	spdlog::get("log")->info("{}", string);
+
+
+	bool stats = mDatabaseMgr->AddQuery("load", loadQ);
+	if (!stats) {
+		std::string error = DatabaseInstance::instance().get_error_msg();
+		spdlog::get("log")->error("{}", error);
+		mDatabaseMgr->ChangeQuery("load", loadQ);
+	}
+	mDatabaseMgr->LoadTable();
+	SetItemCount(mProductInventoryData.size());
+
+}
+
+
+
+void InventoryView::StoreInventory(const Inventories::row_t& row)
+{
+	//write to the database
+	mDatabaseMgr->InsertTable(row);
+}
+
+void InventoryView::LoadAllInventory()
+{
+	CreateLoadAllQuery();
+	mDatabaseMgr->LoadTable();
+	SetItemCount(mProductInventoryData.size());
+
 }
 
 wxItemAttr* InventoryView::OnGetItemAttr(long item) const
@@ -279,19 +340,10 @@ void InventoryView::SetupImages()
 void InventoryView::ResetProductInventoryList(std::uint64_t productID)
 {
 	//clear states
-	mImageTable.clear();
-	mCheckedTable.clear();
-	mAttributesTable.clear();
-	mSortColOrder.reset();
+	ResetState();
 
 	mProductId = productID;
-	mDatabaseMgr->RemoveQuery("load");
-	nl::query q;
-	q.select("*").from(Inventories::table_name).where(fmt::format("{} = \'{:d}\'",
-		Inventories::get_col_name<Inventories::product_id>(), mProductId));
-	spdlog::get("log")->info("{}", q.get_query());
-	mDatabaseMgr->AddQuery("load", q);
-	mDatabaseMgr->LoadTable();
+	LoadInventory(nl::clock::now());
 
 	mProductInventoryData.quick_sort<Inventories::date_issued, nl::order_dec<Inventories::elem_t<Inventories::date_issued>>>();
 	SetupImages();

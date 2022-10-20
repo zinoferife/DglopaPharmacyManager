@@ -64,7 +64,13 @@ public:
 	{
 		ID_TOOL_DOWNLOAD_DATA = wxID_HIGHEST + 400,
 		ID_TOOL_USER,
-		ID_TOOL
+		ID_TOOL,
+		ID_SQL_TRACE,
+		ID_TRACE_STMT,
+		ID_TRACE_PROFILE,
+		ID_TRACE_ROW,
+		ID_TRACE_CLOSE
+
 	};
 
 
@@ -114,14 +120,15 @@ private:
 	void OnUserBtnDropDown(wxAuiToolBarEvent& evt);
 	void OnSignOut(wxCommandEvent& evt);
 	void OnCreateAccount(wxCommandEvent& evt);
-
+	void OnTraceDebugOption(wxCommandEvent& evt);
 private:
 	
 	//tempoary 
 	//this would come from the config that is written during the 
 	//set up wizard
 	std::string mNameOFPharmacy;
-
+	bool mSQLTrace = true;
+	std::bitset<4> mTraceMask;
 	//debug
 	template<typename func>
 	void time_it(const std::string& text, func c)

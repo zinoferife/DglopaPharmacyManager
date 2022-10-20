@@ -67,7 +67,7 @@ public:
 	};
 
 
-	SearchProduct(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("Search Product"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(604, 405), long style = wxDEFAULT_FRAME_STYLE | wxTAB_TRAVERSAL);
+	SearchProduct(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = wxT("Search Product"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(1057, 642), long style = wxDEFAULT_FRAME_STYLE | wxTAB_TRAVERSAL);
 	wxAuiManager m_mgr;
 
 	~SearchProduct();
@@ -78,6 +78,8 @@ public:
 
 	void SetUpView();
 	void SetUpView(std::vector<size_t> idx);
+
+
 
 	inline view_t::row_t GetSelectedProduct() const	{
 		return ProductView[mSelectedProduct];

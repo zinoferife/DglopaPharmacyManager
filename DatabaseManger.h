@@ -123,8 +123,12 @@ public:
 			create_statement = iter;
 		}
 
-		if (!mDatabase.exec_once(create_statement->second)) {
-				spdlog::get("log")->error("{}", mDatabase.get_error_msg());
+		try {
+			mDatabase.exec_once(create_statement->second);
+		}
+		catch (nl::database_exception& exp) {
+			spdlog::get("log")->error("{}", exp.what());
+			
 		}
 	}
 	
@@ -149,8 +153,12 @@ public:
 			spdlog::get("log")->error("Invalid query {}", q.get_query());
 			return;
 		}
-		if (!mDatabase.exec_once(statement)) {
-			spdlog::get("log")->error("{}: {}", q.get_query(), mDatabase.get_error_msg());
+		try {
+			mDatabase.exec_once(statement->second);
+		}
+		catch (nl::database_exception& exp) {
+			spdlog::get("log")->error("{}", exp.what());
+
 		}
 	}
 
@@ -162,26 +170,40 @@ public:
 			//make default
 			nl::query q;
 			q.select("*").from(table::table_name);
-			auto statement = mDatabase.prepare_query(q);
-			spdlog::get("log")->info("{}", q.get_query());
-			if (statement == nl::database::BADSTMT){
-				spdlog::get("log")->error(" invalid query {}", q.get_query());
+			try {
+				auto statement = mDatabase.prepare_query(q);
+				spdlog::get("log")->info("{}", q.get_query());
+				auto [iter_insert, inserted] = m_statements.insert({ "load", statement });
+				if (!inserted){
+					spdlog::get("log")->error("Failed to insert query in cache");
+					return;
+				}
+				iter = iter_insert;
+			}catch(nl::database_exception& exp) {
+				spdlog::get("log")->error("Error in Load Table: {}, error string {}", q.get_query(),
+						exp.what());
 				return;
 			}
-			auto [iter_insert, inserted] = m_statements.insert({ "load", statement });
-			if (!inserted){
-				spdlog::get("log")->error("Failed to insert query in cache");
-				return;
-			}
-			iter = iter_insert;
 		}
-		static_cast<typename table::relation_t&>(mTable) = std::move(mDatabase.retrive<typename table::relation_t>(iter->second));
-		if (!mDatabase.get_error_msg().empty()) spdlog::get("log")->error("{}", mDatabase.get_error_msg());
+		try {
+			static_cast<typename table::relation_t&>(mTable) = std::move(mDatabase.retrive<typename table::relation_t>(iter->second));
+		}
+		catch (nl::database_exception& exp){
+			spdlog::get("log")->error("Error in Load Table: {}", exp.what());
+		}
 
 		typename table::notification_data data;
 		data.count = mTable.size();
 		mTable.notify<nl::notifications::load>(data);
 	}
+
+	//write the entire relation referenced by this database manager to the database
+	void FlushTable() {
+		//insert the table to the database and clear the table;
+		InsertTable(mTable);
+		mTable.clear();
+	}
+
 
 	void RegisterNotifications(){
 		mTable.sink<nl::notifications::add>().add_listener<DatabaseManager, & DatabaseManager::OnAddNotification>(this);
@@ -190,12 +212,19 @@ public:
 		mTable.sink<nl::notifications::add>().remove_listener<DatabaseManager, & DatabaseManager::OnAddNotification>(this);
 	}
 
-	bool ExecOnce(const std::string& query) {
+	void ExecOnce(const std::string& query) {
 		auto exec_stmt = m_statements.find(query);
 		if (exec_stmt == m_statements.end()) {
 			spdlog::get("log")->error("invalid exec query name {}", query);
 		}
-		return mDatabase.exec_once(exec_stmt->second);
+
+		try {
+			mDatabase.exec_once(exec_stmt->second);
+		}
+		catch (nl::database_exception& exp) {
+			spdlog::get("log")->error("{}", exp.what());
+
+		}
 	}
 
 
@@ -211,16 +240,17 @@ public:
 		q.set(names...);
 		q.where(fmt::format("{} = \'{:d}\'", table:: template get_col_name<table::id>(), id));
 		spdlog::get("log")->info("update query {}", q.get_query());
-		auto statement = mDatabase.prepare_query(q);
-		if (statement == nl::database::BADSTMT){
-			spdlog::get("log")->error("invalid query: {}", q.get_query());
-			return;
+		try {
+			auto statement = mDatabase.prepare_query(q);
+			if (statement == nl::database::BADSTMT) {
+				spdlog::get("log")->error("invalid query: {}", q.get_query());
+				return;
+			}
+			mDatabase.update(statement, data, names...);
+			mDatabase.remove_statement(statement);
+		} catch (nl::database_exception& exp) {
+			spdlog::get("log")->error("Could not update {}, error {}", table::table_name, exp.what());
 		}
-		bool ret = mDatabase.update(statement, data, names...);
-		if (!ret){
-			spdlog::get("log")->error("Could not update {}, error {}", table::table_name, mDatabase.get_error_msg());
-		}
-		mDatabase.remove_statement(statement);
 	}
 	template<typename Value>
 	void InsertTable(const Value& tab)
@@ -231,26 +261,28 @@ public:
 			nl::query q;
 			q.insert(table::table_name);
 			values(std::make_index_sequence<table::column_count>{}, q);
-			auto statement = mDatabase.prepare_query(q);
-			if (statement == nl::database::BADSTMT) {
-				spdlog::get("log")->error("invalid query {}", q.get_query());
+			try {
+				auto statement = mDatabase.prepare_query(q);
+				auto [iter, inserted] = m_statements.insert({ "add", statement });
+				if (!inserted) {
+					spdlog::get("log")->error("Could not insert into m_statement cache");
+					return;
+				}
+				insert_iter = iter;
+
+			}catch(nl::database_exception& exp) {
+				spdlog::get("log")->error("invalid query {}, {}", q.get_query(), exp.what());
 				return;
 			}
-			auto [iter, inserted] = m_statements.insert({ "add", statement });
-			if (!inserted) {
-				spdlog::get("log")->error("Could not insert into m_statement cache");
-				return;
-			}
-			insert_iter = iter;
 		}
-		bool ret = insert(nl::select_all<table>{}, mDatabase, tab, insert_iter->second);
-		if (!ret){
-			spdlog::get("log")->error("insert error, {}", mDatabase.get_error_msg());
+
+		try {
+			insert(nl::select_all<table>{}, mDatabase, tab, insert_iter->second);
+		}catch (nl::database_exception& exp) {
+			spdlog::get("log")->error("insert error, {}", exp.what());
 			return;
 		}
-		else {
-			spdlog::get("log")->info("Successfully inserted into the table {}", table::table_name);
-		}
+		spdlog::get("log")->info("Successfully inserted into the table {}", table::table_name);
 	}
 
 	template<typename Value>
@@ -259,16 +291,15 @@ public:
 		static_assert(nl::detail::is_relation_row_v<Value, table>, "Value is not a valid table row type");
 		nl::query q;
 		q.del(table::table_name).where(fmt::format("{} = \'{:d}\'", table:: template get_col_name<table::id>(), nl::row_value<table::id>(value)));
-		auto stat = mDatabase.prepare_query(q);
-		if (stat == nl::database::BADSTMT) {
-			spdlog::get("log")->error("invalid query {}", q.get_query());
-			return;
+		try {
+			auto stat = mDatabase.prepare_query(q);
+			mDatabase.exec_once(stat);
+			mDatabase.remove_statement(stat);
 		}
-		bool exec = mDatabase.exec_once(stat);
-		if (!exec) {
-			spdlog::get("log")->error("Cannot execute database command {}", mDatabase.get_error_msg());
+		catch (nl::database_exception& exp) {
+				spdlog::get("log")->error("Cannot execute database command {}", exp.what());
+				return;
 		}
-		mDatabase.remove_statement(stat);
 	}
 
 //table events
@@ -305,30 +336,7 @@ public:
 
 	void OnAddNotification(const typename table::table_t& table, const typename table::notification_data& data)
 	{
-		auto add_statement_iter = m_statements.find("add");
-		if (add_statement_iter == m_statements.end()){
-			nl::query q;
-			q.insert(table::table_name);
-			values(std::make_index_sequence<table::column_count>{}, q);
-			auto statement = mDatabase.prepare_query(q);
-			if (statement == nl::database::BADSTMT){
-				spdlog::get("log")->error("invalid query {}", q.get_query());
-				return;
-			}
-			auto [iter, inserted] = m_statements.insert({ "add", statement });
-			if (!inserted) {
-				spdlog::get("log")->error("Could not insert into m_statement cache");
-				return;
-			}
-			add_statement_iter = iter;
-		}
-		bool ret = insert(std::make_index_sequence<table::column_count>{}, mDatabase, (*data.row_iterator), add_statement_iter->second);
-		if (!ret){
-			spdlog::get("log")->error("Cannot insert into table {}, {}", table::table_name, mDatabase.get_error_msg());
-		}
-		else{
-			spdlog::get("log")->info("Successfully inserted into the table {}", table::table_name);
-		}
+		InsertTable(*data.row_iterator);
 	}
 
 protected:

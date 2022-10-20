@@ -118,6 +118,7 @@ void SearchProduct::SetUpView(std::vector<size_t> idx)
 	mModel->ReloadIndices();
 }
 
+
 void SearchProduct::OnItemSelected(wxDataViewEvent& evt)
 {
 

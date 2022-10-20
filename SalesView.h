@@ -27,6 +27,8 @@
 
 
 #include <nl_uuid.h>
+#include <array>
+#include <utility>
 
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
@@ -50,7 +52,8 @@ public:
 		ID_CHECKOUT,
 		ID_SETTINGS,
 		ID_SALES_OUTPUT,
-		ID_ADD_PRODUCT
+		ID_ADD_PRODUCT,
+		ID_SAVE_LIST
 
 	};
 
@@ -60,6 +63,7 @@ public:
 	void CreateDataView();
 	void CreateSpecialColHandlers();
 	void CreateSalesOutput();
+	void CreateInventoryDatabaseManger();
 
 	void SetDefaultAuiArt();
 	void SetSpecicalColumns(); //set for writing the quanity that can be editited.
@@ -68,6 +72,8 @@ public:
 	void OnCheckOut(wxCommandEvent& evnt);
 	void OnReturn(wxCommandEvent& evnt);
 	void OnAddProduct(wxCommandEvent& evnt);
+	void OnSalesSave(wxCommandEvent& evt);
+	void OnSaveListSelected(wxCommandEvent& evt);
 
 	void OnEditingStarted(wxDataViewEvent& evt);
 	void OnEditingStarting(wxDataViewEvent& evt);
@@ -84,10 +90,21 @@ public:
 	void StoreEditedValue(const wxVariant& data, const wxDataViewItem& item, 
 			size_t col);
 	void UpdateTotal();
+	void DoCheckOut();
+	bool CheckIfAdded(Products::elem_t<Products::id> id);
+	void StoreDataInInventory();
+	Inventories::row_t MostRecentInventoryEntry(Products::elem_t<Products::id> id);
 
+
+	void DoSave();
+	void DoRestore();
+
+
+	void DoSwap();
 private:
 	std::unique_ptr<wxAuiManager> mViewManager;
-	
+	wxChoice* mSaveList;
+
 	//this would come from settings
 	bool mPOMwarningMessage = false;
 
@@ -98,7 +115,15 @@ private:
 	std::unique_ptr<wxDataViewCtrl> mDataView;
 	std::unique_ptr<DataModel<Sales>> mModel;
 	std::unique_ptr<SalesOutput> mSalesOutput;
+	std::unique_ptr<DatabaseManager<Inventories>> mInvetoryDatabasemagr;
+	
+
+	std::array<Sales, 5> mSalesTables;
 	Sales mSalesTable;
+
+	//so the the database manager can have where to read or write data
+	Inventories  mTempInventoryRel;
+
 
 	DECLARE_EVENT_TABLE()
 

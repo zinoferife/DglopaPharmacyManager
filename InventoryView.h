@@ -25,6 +25,11 @@
 #include <random>
 #include <functional>
 
+//fristly, the inventory list can get very long 
+//having all of it in memory isnt really possible 
+//therefore should not be loading the whole table
+
+
 
 class InventoryView : public wxListCtrl
 {
@@ -62,6 +67,10 @@ public:
 		return mProductId;
 	}
 
+	void LoadInventory(const nl::date_time_t& today);
+	void StoreInventory(const Inventories::row_t& row);
+	void LoadAllInventory();
+
 	//getters for the state tables 
 	inline constexpr Inventories& GetActiveInventoryData()
 	{
@@ -81,9 +90,6 @@ private:
 	void CreateInventoryView();
 	void CalculateBalance(Inventories::row_t& row);
 
-	//inventory table notification handlers 
-	void OnAddNotification(const Inventories::table_t& table, const Inventories::notification_data& data);
-
 
 	//utiliy functions 
 	void AddInOrder(const Inventories::row_t& row);
@@ -93,7 +99,7 @@ private:
 	std::shared_ptr<wxListItemAttr> mJustAdded;
 
 	//different images
-
+	void CreateLoadAllQuery();
 
 	std::int32_t mSortColumn;
 	std::uint64_t mProductId;

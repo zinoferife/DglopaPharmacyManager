@@ -49,6 +49,8 @@ public:
 	void SetChangeText(const std::string& text);
 	void SetTotalText(const std::string& text);
 	void SetDiscountText(const std::string& text);
+	void ClearOutput();
+
 
 	std::string GetTotalTextValue() const {
 		return TotalText->GetValue().ToStdString();

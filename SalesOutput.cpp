@@ -105,3 +105,10 @@ void SalesOutput::SetDiscountText(const std::string& text)
 	DiscountText->SetValue(text);
 	DiscountText->Update();
 }
+
+void SalesOutput::ClearOutput()
+{
+	TotalText->Clear();
+	DiscountText->Clear();
+	ChangeText->Clear();
+}

@@ -12,6 +12,13 @@ EVT_MENU(MainFrame::ID_IMPORT_JSON, MainFrame::OnImportJson)
 EVT_AUITOOLBAR_TOOL_DROPDOWN(MainFrame::ID_TOOL_USER, MainFrame::OnUserBtnDropDown)
 EVT_MENU(MainFrame::ID_USER_CREATE_ACCOUNT, MainFrame::OnCreateAccount)
 EVT_MENU(MainFrame::ID_USER_LOG_OUT, MainFrame::OnSignOut)
+
+//only in debug 
+EVT_MENU(MainFrame::ID_TRACE_STMT, MainFrame::OnTraceDebugOption)
+EVT_MENU(MainFrame::ID_TRACE_PROFILE, MainFrame::OnTraceDebugOption)
+EVT_MENU(MainFrame::ID_TRACE_ROW, MainFrame::OnTraceDebugOption)
+EVT_MENU(MainFrame::ID_TRACE_CLOSE, MainFrame::OnTraceDebugOption)
+//
 END_EVENT_TABLE()
 
 
@@ -109,6 +116,12 @@ void MainFrame::CreateMenuBar()
 	views->Append(ID_MODULE, "Modules");
 
 	wxMenu* settings = new wxMenu;
+	wxMenu* subDebug = new wxMenu;
+	subDebug->AppendCheckItem(ID_TRACE_STMT, "Trace Statmemt");
+	subDebug->AppendCheckItem(ID_TRACE_PROFILE, "Trace profile");
+	subDebug->AppendCheckItem(ID_TRACE_ROW, "Trace row");
+	subDebug->AppendCheckItem(ID_TRACE_CLOSE, "Trace statmemt");
+	settings->Append(ID_SQL_TRACE, "Debug sql", subDebug);
 
 	wxMenu* Help = new wxMenu;
 	Help->Append(wxID_ABOUT);
@@ -162,6 +175,20 @@ void MainFrame::CreateDatabase()
 			break;
 		}
 		}, nullptr);
+
+
+	//for debugging and profilling
+	DatabaseInstance::instance().set_trace_handler([](std::uint32_t trace_type, void* arg, void* p, void* x) -> int {
+		if (trace_type == SQLITE_TRACE_STMT) {
+			sqlite3_stmt* stmt = (sqlite3_stmt*)p;
+			if (stmt) {
+				spdlog::get("log")->info("Getting the statment log");
+				//spdlog::get("log")->info("executing in table {}", sqlite3_column_table_name(stmt, 0));
+			}
+		}
+
+		return 0; 
+		},mTraceMask.to_ullong(), nullptr);
 }
 
 //This should be customisable
@@ -354,6 +381,32 @@ void MainFrame::OnCreateAccount(wxCommandEvent& evt)
 		Users::notification_data data;
 		data.row_iterator= UsersInstance::instance().add(dialog.GetNewUser());
 		UsersInstance::instance().notify<nl::notifications::add>(data);
+	}
+}
+
+void MainFrame::OnTraceDebugOption(wxCommandEvent& evt)
+{
+	wxWindowID id = evt.GetId();
+	switch (id)
+	{
+	case ID_TRACE_STMT:
+		if (evt.IsChecked()) mTraceMask.set(0);
+		else mTraceMask.reset(0);
+		break;
+	case ID_TRACE_PROFILE:
+		if (evt.IsChecked()) mTraceMask.set(1);
+		else mTraceMask.reset(1);
+		break;
+	case ID_TRACE_ROW:
+		if (evt.IsChecked()) mTraceMask.set(2);
+		else mTraceMask.reset(2);
+		break;
+	case ID_TRACE_CLOSE:
+		if (evt.IsChecked()) mTraceMask.set(3);
+		else mTraceMask.reset(3);
+		break;
+	default:
+		break;
 	}
 }
 
