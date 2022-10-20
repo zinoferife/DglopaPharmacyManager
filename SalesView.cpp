@@ -436,23 +436,31 @@ void SalesView::StoreDataInInventory()
 Inventories::row_t SalesView::MostRecentInventoryEntry(Products::elem_t<Products::id> id)
 {
 	nl::query q;
+	auto product_col_name = Inventories::get_col_name<Inventories::product_id>();
+	auto date_issed_name = Inventories::get_col_name<Inventories::date_issued>();
 	q.select("*")
 		.from(Inventories::table_name)
-		.where(fmt::format("{} = {:d}", Inventories::get_col_name<Inventories::product_id>(),id))
-		.and_(fmt::format("{} EQUAL ",Inventories::get_col_name<Inventories::date_issued>()))
+		.where(fmt::format("({},{}) IN ", product_col_name, date_issed_name))
 		.beg_sub_query()
-		.select(fmt::format("MAX({})", Inventories::get_col_name<Inventories::date_issued>()))
-		.from(Inventories::table_name);
-
-	auto stat = DatabaseInstance::instance().prepare_query(q);
-	spdlog::get("log")->info(q.get_query());
-	//use the exeptions from the database to throw on bad query
-	if (stat == nl::database::BADSTMT) {
-		spdlog::get("log")->error("{}", DatabaseInstance::instance().get_error_msg());
+			.select(fmt::format("{}, MAX({})", product_col_name, date_issed_name))
+			.from(Inventories::table_name)
+			.groupby(Inventories::get_col_name<Inventories::product_id>())
+		.end_sub_query();
+	try {
+		auto stat = DatabaseInstance::instance().prepare_query(q);
+		spdlog::get("log")->info(q.get_query());
+		//use the exeptions from the database to throw on bad query
+		if (stat == nl::database::BADSTMT) {
+			spdlog::get("log")->error("{}", DatabaseInstance::instance().get_error_msg());
+			return Inventories::row_t{};
+		}
+		//most resently added row should have the upto date balance for this product
+		return DatabaseInstance::instance().retrive_row<Inventories::row_t>(stat);
+	}
+	catch (nl::database_exception& exp) {
+		spdlog::get("log")->critical(exp.what());
 		return Inventories::row_t{};
 	}
-	//most resently added row should have the upto date balance for this product
-	return DatabaseInstance::instance().retrive_row<Inventories::row_t>(stat);
 }
 
 
