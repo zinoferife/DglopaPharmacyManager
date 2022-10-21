@@ -24,6 +24,7 @@ typedef nl::singleton_holder<PrintManager> PrinterInstance;
 typedef nl::singleton_holder<NetworkManager> NetworkManagerInstance;
 
 typedef DatabaseSignalManager<Inventories> InventoriesDatabaseSignal;
+typedef DatabaseSignalManager<Products> ProductsDatabaseSignal;
 
 //generates random Ids between one millon and 10 millon, They do not need to be universally unique
 //just unique inthe context of the table that the ids in

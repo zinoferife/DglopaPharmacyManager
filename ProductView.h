@@ -165,7 +165,7 @@ private:
 	//database signals
 	void OnDatabaseInventorySignal(InventoriesDatabaseSignal::PrimaryKey_t key,
 				InventoriesDatabaseSignal::DSM_FUNC func, size_t col);
-
+	void OpenInventoryView(Products::const_iterator iterator);
 private:
 	//for test 
 	std::bitset<3> mSearchFlags;

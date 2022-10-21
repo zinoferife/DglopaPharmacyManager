@@ -2,23 +2,13 @@
 #include "InventoryView.h"
 
 InventoryView::InventoryView(std::uint64_t ProductID, wxWindow* parent, wxWindowID id, const wxPoint& position, const wxSize size)
-	: wxListCtrl(parent, id, position, size, wxLC_REPORT | wxLC_VIRTUAL | wxLC_HRULES | wxNO_BORDER), mProductId(ProductID), mSortColumn{-1}{
+	: wxListCtrl(parent, id, position, size, wxLC_REPORT | wxLC_VIRTUAL | wxNO_BORDER), mProductId(ProductID), mSortColumn{-1}{
 
 	mDatabaseMgr = std::make_unique<DatabaseManager<Inventories>>(mProductInventoryData, DatabaseInstance::instance());
-	
-
-
 	mDatabaseMgr->CreateTable();
-	LoadInventory(nl::clock::now());
-
-	mProductInventoryData.quick_sort<Inventories::date_issued, nl::order_dec<Inventories::elem_t<Inventories::date_issued>>>();
 	CreateInventoryView();
 	EnableAlternateRowColours();
-	SetupImages();
 	CreateAttributes();
-	SetItemCount(mProductInventoryData.size());
-	mSortColOrder.reset();
-
 }
 
 InventoryView::~InventoryView()
@@ -136,7 +126,12 @@ void InventoryView::AddInOrder(const Inventories::row_t& row)
 void InventoryView::CreateAttributes()
 {
 	mJustAdded = std::make_shared<wxListItemAttr>();
+	mQuantityIn = std::make_shared<wxListItemAttr>();
+	mQuantityOut = std::make_shared<wxListItemAttr>();
+	//TODO: GET COLORS FROM CONFIG, THAT SHOULD BE CONFIGURABLE FROM A COLOR PICKER
 	mJustAdded->SetBackgroundColour(wxColour(0, 255, 127));
+	mQuantityIn->SetBackgroundColour(wxColour(223, 255, 0));
+	mQuantityOut->SetBackgroundColour(wxColour(255, 127, 80));
 }
 
 void InventoryView::CreateLoadAllQuery()
@@ -235,6 +230,13 @@ void InventoryView::ResetState()
 
 void InventoryView::LoadInventory(const nl::date_time_t& date)
 {
+	if (!mProductInventoryData.empty()) {
+		ResetState();
+		mAttributesTable.clear();
+		mImageTable.clear();
+		mProductInventoryData.clear();
+	}
+
 	nl::query loadQ;
 	//find the time bounded by {00:00am - 00:00am}
 	auto midnight = date - nl::time_since_midnight();
@@ -243,22 +245,10 @@ void InventoryView::LoadInventory(const nl::date_time_t& date)
 	auto time_since_mid = nl::to_representation(midnight);
 	auto next_time_since_mid = nl::to_representation(next_midnight);
 
-	//loadQ.select("*").from(Inventories::table_name).where(fmt::format("{} = \'{:d}\'",
-	//	Inventories::get_col_name<Inventories::product_id>(), mProductId)).and_(fmt::format("{} > \'{:d}\' AND {} < \'{:d}\'",
-	//	Inventories::get_col_name<Inventories::date_issued>(),
-	//	time_since_mid,
-	//	Inventories::get_col_name<Inventories::date_issued>(),
-	//	next_time_since_mid));
 
 
 	loadQ.select("*").from(Inventories::table_name).where(fmt::format("{} = \'{:d}\'",
 		 Inventories::get_col_name<Inventories::product_id>(), mProductId));
-
-	//if using a server, send query to server to get the data from the server
-	
-
-	auto string = loadQ.get_query();
-	spdlog::get("log")->info("{}", string);
 
 
 	bool stats = mDatabaseMgr->AddQuery("load", loadQ);
@@ -268,16 +258,22 @@ void InventoryView::LoadInventory(const nl::date_time_t& date)
 		mDatabaseMgr->ChangeQuery("load", loadQ);
 	}
 	mDatabaseMgr->LoadTable();
+	ProcessInventoryAttributes();
 	SetItemCount(mProductInventoryData.size());
-
+	mProductInventoryData.quick_sort<Inventories::date_issued, nl::order_dec<Inventories::elem_t<Inventories::date_issued>>>();
 }
 
-
+void InventoryView::LoadInventory(Inventories::elem_t<Inventories::product_id> id, const nl::date_time_t& today)
+{
+	mProductId = id;
+	LoadInventory(today);
+}
 
 void InventoryView::StoreInventory(const Inventories::row_t& row)
 {
 	//write to the database
 	mDatabaseMgr->InsertTable(row);
+	InventoriesDatabaseSignal::Signal(nl::row_value<Inventories::id>(row), InventoriesDatabaseSignal::DSM_FUNC::DSM_INSERT, 0);
 }
 
 void InventoryView::LoadAllInventory()
@@ -286,6 +282,23 @@ void InventoryView::LoadAllInventory()
 	mDatabaseMgr->LoadTable();
 	SetItemCount(mProductInventoryData.size());
 
+}
+
+void InventoryView::ProcessInventoryAttributes()
+{
+	std::for_each(mProductInventoryData.begin(), mProductInventoryData.end(),
+		[this](auto& item) {
+			auto id = nl::row_value<Inventories::id>(item);
+			if (nl::row_value<Inventories::quantity_out>(item)) {
+				mAttributesTable.insert({ id, mQuantityOut });
+			}
+			else if (nl::row_value<Inventories::quantity_in>(item)) {
+				mAttributesTable.insert({ id, mQuantityIn });
+			}
+			if (nl::row_value<Inventories::balance>(item)) AddImage(id, 1);
+			else AddImage(id, 0);
+
+		});
 }
 
 wxItemAttr* InventoryView::OnGetItemAttr(long item) const
@@ -346,6 +359,4 @@ void InventoryView::ResetProductInventoryList(std::uint64_t productID)
 	LoadInventory(nl::clock::now());
 
 	mProductInventoryData.quick_sort<Inventories::date_issued, nl::order_dec<Inventories::elem_t<Inventories::date_issued>>>();
-	SetupImages();
-	SetItemCount(mProductInventoryData.size());
 }

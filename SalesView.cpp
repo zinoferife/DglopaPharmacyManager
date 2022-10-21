@@ -444,6 +444,7 @@ Inventories::row_t SalesView::MostRecentInventoryEntry(Products::elem_t<Products
 		.beg_sub_query()
 			.select(fmt::format("{}, MAX({})", product_col_name, date_issed_name))
 			.from(Inventories::table_name)
+			.where(fmt::format("{} = \'{:d}\'", product_col_name, id))
 			.groupby(Inventories::get_col_name<Inventories::product_id>())
 		.end_sub_query();
 	try {

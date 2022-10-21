@@ -615,14 +615,16 @@ void ProductView::OnProductItemActivated(wxDataViewEvent& evt)
 	//deferend creation, the pane is invalid, have to get another pane to show
 	auto item = evt.GetItem();
 	if (!item.IsOk()) return;
+
 	int index = mModel->GetDataViewItemIndex(evt.GetItem());
 	if (index == -1) return;
+
 	auto& InventoryPane = mPanelManager->GetPane("Inventory");
 	if (InventoryPane.IsOk()){
 		mPanelManager->GetPane("DataView").Hide();
 		auto& row = ProductInstance::instance()[index];
 		if (mInventoryView->GetProductId() != nl::row_value<Products::id>(row)){
-			mInventoryView->ResetProductInventoryList(nl::row_value<Products::id>(row));
+			mInventoryView->LoadInventory(nl::row_value<Products::id>(row), nl::clock::now());
 		}
 		InventoryPane.Show();
 		ShowInventoryToolBar(row);
@@ -632,6 +634,8 @@ void ProductView::OnProductItemActivated(wxDataViewEvent& evt)
 		mPanelManager->GetPane("DataView").Hide();
 		auto& row = ProductInstance::instance()[index];
 		CreateInventory(nl::row_value<Products::id>(row));
+		mInventoryView->LoadInventory(nl::clock::now());
+
 		//get pane and update
 		mPanelManager->GetPane("Inventory").Show();
 		ShowInventoryToolBar(row);
@@ -1076,8 +1080,7 @@ void ProductView::OnDatabaseInventorySignal(InventoriesDatabaseSignal::PrimaryKe
 	case InventoriesDatabaseSignal::DSM_FUNC::DSM_INSERT:
 		try {
 			nl::query q;
-			q.select("*").from(Inventories::table_name).where(fmt::format("{} = {:d}",
-				Inventories::get_col_name<Inventories::id>(), key));
+			q.select("*").from(Inventories::table_name).where(fmt::format("{} = {:d}", Inventories::get_col_name<Inventories::id>(), key));
 			auto stat = DatabaseInstance::instance().prepare_query(q);
 			auto row = DatabaseInstance::instance().retrive_row<Inventories::row_t>(stat);
 			DatabaseInstance::instance().remove_statement(stat);
@@ -1095,6 +1098,8 @@ void ProductView::OnDatabaseInventorySignal(InventoriesDatabaseSignal::PrimaryKe
 				mModel->RemoveAttribute(nl::row_value<Products::id>(*it));
 				mDatabaseMgr->UpdateTable(nl::row_value<Products::id>(*it), ProductInstance::instance().get<Products::stock_count>(it),
 					Products::get_col_name<Products::stock_count>());
+				
+				OpenInventoryView(it);
 			}
 		}
 		catch (nl::database_exception& exp) {
@@ -1105,6 +1110,27 @@ void ProductView::OnDatabaseInventorySignal(InventoriesDatabaseSignal::PrimaryKe
 		break;
 	}
 
+}
+
+void ProductView::OpenInventoryView(Products::const_iterator iterator)
+{
+	//the test for the iterator should happen before this function is calles 
+	try {
+		auto& row = *iterator;
+		wxAuiPaneInfo& inventoryPane = mPanelManager->GetPane("Inventory");
+		if (inventoryPane.IsOk() && inventoryPane.IsShown()) {
+			//we are currently on an inventory pane window and its shown to the user
+			if (nl::row_value<Products::id>(row) == mInventoryView->GetProductId()) {
+				mInventoryView->Freeze();
+				mInventoryView->LoadInventory(nl::clock::now());
+				mInventoryView->Thaw();
+				mInventoryView->Refresh();
+			}
+		}
+	}
+	catch (std::exception& e) {
+		spdlog::get("log")->critical(e.what());
+	}
 }
 
 

@@ -24,6 +24,7 @@
 #include <memory>
 #include <random>
 #include <functional>
+#include <algorithm>
 
 //fristly, the inventory list can get very long 
 //having all of it in memory isnt really possible 
@@ -68,9 +69,10 @@ public:
 	}
 
 	void LoadInventory(const nl::date_time_t& today);
+	void LoadInventory(Inventories::elem_t<Inventories::product_id> id, const nl::date_time_t& today);
 	void StoreInventory(const Inventories::row_t& row);
 	void LoadAllInventory();
-
+	void ProcessInventoryAttributes();
 	//getters for the state tables 
 	inline constexpr Inventories& GetActiveInventoryData()
 	{
@@ -97,6 +99,8 @@ private:
 private:
 	//different attributes
 	std::shared_ptr<wxListItemAttr> mJustAdded;
+	std::shared_ptr<wxListItemAttr> mQuantityIn;
+	std::shared_ptr<wxListItemAttr> mQuantityOut;
 
 	//different images
 	void CreateLoadAllQuery();

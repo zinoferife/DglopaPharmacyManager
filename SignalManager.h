@@ -24,7 +24,7 @@ public:
 	using Signal_t = boost::signals2::signal<void(PrimaryKey_t,DSM_FUNC, size_t)>;
 	using Function_t = typename Signal_t::slot_type; //std::function<void(PrimaryKey_t, DSM_FUNC, size_t)>;
 	//calls the slot
-	static Signal(PrimaryKey_t key, DSM_FUNC func, size_t col) {
+	static void Signal(PrimaryKey_t key, DSM_FUNC func, size_t col) {
 		mSignalObject(key, func, col);
 	}
 	
@@ -49,5 +49,5 @@ private:
 
 };
 
-template<typename Table, typename PrimaryKey = std::uint64_t>
-typename DatabaseSignalManager<Table, PrimaryKey>::Signal_t mSignalObject{};
+template<typename Table, typename PrimaryKey>
+typename DatabaseSignalManager<Table, PrimaryKey>::Signal_t DatabaseSignalManager<Table, PrimaryKey>::mSignalObject{};
