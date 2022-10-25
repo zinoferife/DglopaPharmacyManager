@@ -93,7 +93,7 @@ public:
 	void DoCheckOut();
 	bool CheckIfAdded(Products::elem_t<Products::id> id);
 	void StoreDataInInventory();
-	Inventories::row_t MostRecentInventoryEntry(Products::elem_t<Products::id> id);
+	Inventories::row_t MostRecentInventoryEntry(Products::elem_t<Products::id> id) const;
 
 
 	void DoSave();

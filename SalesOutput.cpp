@@ -111,4 +111,8 @@ void SalesOutput::ClearOutput()
 	TotalText->Clear();
 	DiscountText->Clear();
 	ChangeText->Clear();
+
+	TotalText->SetValue("0.00");
+	DiscountText->SetValue("0");
+	ChangeText->SetValue("0.00");
 }

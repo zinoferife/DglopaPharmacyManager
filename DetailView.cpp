@@ -47,7 +47,14 @@ void DetailView::CreatePropertyGrid(typename Products::elem_t<Products::id> prod
 	auto stock = page->Append(new wxIntProperty("Product stock count", wxPG_LABEL, nl::row_value<Products::stock_count>(*product)));
 	stock->SetHelpString("The stock count");
 	stock->Enable(false);
-	auto unit_price = page->Append(new wxStringProperty("Product unit price", wxPG_LABEL, nl::row_value<Products::unit_price>(*product))); 
+	auto f = 0.0f;
+	try {
+		f = std::atof(nl::row_value<Products::unit_price>(*product).c_str());
+	}
+	catch (...) {
+		spdlog::get("log")->critical("Formart of Unit price is wrong  for {}", nl::row_value<Products::name>(*product));
+	}
+	auto unit_price = page->Append(new wxFloatProperty("Product unit price", wxPG_LABEL, static_cast<double>(f))); 
 	unit_price->SetHelpString("The current sale price for the product");
 	//TODO: set a float validator for the unitprice string property
 
@@ -112,7 +119,7 @@ void DetailView::CreatePropertyProductCallback(Products::iterator iter)
 	mPropertyToValueCallback.insert({ "Product stock count", std::bind(
 		LongLongProperty<Products>, std::placeholders::_1, Products::stock_count, ProductInstance::instance(), iter) });
 	mPropertyToValueCallback.insert({ "Product unit price", std::bind(
-		StringProperty<Products>, std::placeholders::_1, Products::unit_price, ProductInstance::instance(), iter) });
+		FloatToStringProperty<Products>, std::placeholders::_1, Products::unit_price, ProductInstance::instance(), iter) });
 }
 
 void DetailView::CreatePropertyProductDetailCallback(ProductDetails::iterator iter)

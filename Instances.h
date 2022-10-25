@@ -8,6 +8,8 @@
 #include <random>
 #include <functional>
 
+#include <wx/fileconf.h>
+#include <wx/config.h>
 
 typedef nl::singleton_holder<Products> ProductInstance;
 typedef nl::singleton_holder<Categories> CategoriesInstance;
@@ -22,6 +24,7 @@ typedef nl::singleton_holder<TrackList> TrackListInstance;
 typedef nl::singleton_holder<nl::database> DatabaseInstance;
 typedef nl::singleton_holder<PrintManager> PrinterInstance;
 typedef nl::singleton_holder<NetworkManager> NetworkManagerInstance;
+
 
 typedef DatabaseSignalManager<Inventories> InventoriesDatabaseSignal;
 typedef DatabaseSignalManager<Products> ProductsDatabaseSignal;

@@ -119,7 +119,7 @@ void SalesView::CreateSalesOutput()
 {
 	mSalesOutput = std::make_unique<SalesOutput>(this, ID_SALES_OUTPUT);
 	mViewManager->AddPane(mSalesOutput.get(),
-		wxAuiPaneInfo().Name("SalesOutput").Bottom().Resizable().MinSize(wxSize(-1, 120)).DockFixed()
+		wxAuiPaneInfo().Name("SalesOutput").CaptionVisible(false).Bottom().Resizable().MinSize(wxSize(-1, 120)).DockFixed()
 		.LeftDockable(false).RightDockable(false).Floatable(false).TopDockable(false).CloseButton(false)
 		.Show());
 	mSalesOutput->SetDiscountText("0");
@@ -303,6 +303,20 @@ bool SalesView::CheckInStock(const Products::row_t& row) const
 	return true;
 }
 
+bool SalesView::CheckInStock(const SearchProduct::view_t::row_t& row) const
+{
+	auto id = nl::row_value<0>(row).get();
+	Inventories::row_t InvenRow = MostRecentInventoryEntry(id);
+	auto stock = nl::row_value<Inventories::balance>(InvenRow);
+	if (stock == 0) {
+		wxMessageBox(fmt::format("{} is out of stock",
+			nl::row_value<1>(row).get()), "Sales", wxICON_INFORMATION | wxOK);
+		return false;
+	}
+	return true;
+
+}
+
 
 //setting option to turn this off
 //it can get really annoying
@@ -320,11 +334,35 @@ bool SalesView::CheckProductClass(const Products::row_t& row) const
 	return true;
 }
 
+bool SalesView::CheckProductClass(const SearchProduct::view_t::row_t& row) const
+{
+	auto id = nl::row_value<0>(row).get();
+	auto iter = ProductDetailsInstance::instance().find_on<ProductDetails::id>(id);
+	if (iter != ProductDetailsInstance::instance().end()){
+		//product detail is found
+		const std::string& ref_class = nl::row_value<ProductDetails::p_class>(*iter);
+		if (ref_class == "POM") {
+			return false;
+		}
+	}
+	return true;
+}
+
+
+
 void SalesView::GetDataFromProductSearch(const SearchProduct::view_t::row_t& SelectedRow)
 {
 	Sales::row_t row;
 	if (CheckIfAdded(nl::row_value<Products::id>(SelectedRow))) return;
+	if (!CheckInStock(SelectedRow)) return;
 
+	if (!CheckProductClass(SelectedRow)) {
+		if (wxMessageBox(fmt::format("{} is a Prescription only medicine, Do you wish to continue sale?",
+			nl::row_value<1>(SelectedRow).get()), "Sales",
+			wxICON_QUESTION | wxYES_NO) == wxNO) {
+			return;
+		}
+	}
 	nl::row_value<Sales::product_id>(row) = nl::row_value<0>(SelectedRow);
 	nl::row_value<Sales::user_id>(row) = 64;
 	nl::row_value<Sales::customer_id>(row) = 64;
@@ -397,6 +435,9 @@ bool SalesView::CheckIfAdded(Products::elem_t<Products::id> id)
 		//increase the quantity.. 
 		(nl::row_value<Sales::amount>(*iter))++;
 		UpdateTotal();
+
+		//update the view
+		Refresh();
 		return true;
 	}
 	return false;
@@ -418,12 +459,19 @@ void SalesView::StoreDataInInventory()
 				nl::row_value<Inventories::product_id>(inven_row), 
 				nl::row_value<Inventories::balance>(inven_row));
 		//DEBUG END
-
+		int NewBalance = 0;
+		if (((int)nl::row_value<Sales::amount>(row)) < ((int)nl::row_value<Inventories::balance>(inven_row))){
+			NewBalance = nl::row_value<Inventories::balance>(inven_row) - nl::row_value<Sales::amount>(row);
+		}	
 		mTempInventoryRel.emplace_back(
 			Inventories::row_t{
-			 id, nl::row_value<Sales::product_id>(row),
-			 now, nl::row_value<Inventories::date_expiry>(inven_row), receptNumber,
-			 0, nl::row_value<Sales::amount>(row), (nl::row_value<Inventories::balance>(inven_row) - nl::row_value<Sales::amount>(row)),
+			 id, 
+			 nl::row_value<Sales::product_id>(row),
+			 now, 
+			 nl::row_value<Inventories::date_expiry>(inven_row), receptNumber,
+			 0, 
+			 nl::row_value<Sales::amount>(row),
+			 NewBalance,
 			 0, 0 });
 	}
 	mInvetoryDatabasemagr->FlushTable();
@@ -433,7 +481,7 @@ void SalesView::StoreDataInInventory()
 	mTempInventoryRel.clear();
 }
 
-Inventories::row_t SalesView::MostRecentInventoryEntry(Products::elem_t<Products::id> id)
+Inventories::row_t SalesView::MostRecentInventoryEntry(Products::elem_t<Products::id> id) const 
 {
 	nl::query q;
 	auto product_col_name = Inventories::get_col_name<Inventories::product_id>();
@@ -468,6 +516,12 @@ Inventories::row_t SalesView::MostRecentInventoryEntry(Products::elem_t<Products
 
 void SalesView::DoSave()
 {
+	//no need to save if its empty 
+	if (mSalesTable.empty()) {
+		wxMessageBox("No Sales list to save", "Sales", wxICON_INFORMATION | wxOK);
+		return;
+	}
+
 	const int ListCount = mSaveList->GetCount();
 	if (ListCount == mSalesTables.size()) {
 		//Can nolonger do save
@@ -479,8 +533,6 @@ void SalesView::DoSave()
 	mSaveList->AppendString(NewName);
 	mSaveList->Select(mSaveList->GetCount() - 1);
 
-	//no need to save if its empty 
-	if (mSalesTable.empty()) return;
 	
 
 	//swap with the mSalesTable

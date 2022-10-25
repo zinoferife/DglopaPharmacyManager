@@ -25,6 +25,7 @@ BEGIN_EVENT_TABLE(ProductView, wxPanel)
 	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_EDIT, ProductView::OnProductDetailView)
 	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_REMOVE, ProductView::OnRemoveProduct)
 	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_EXPORT_JSON, ProductView::OnProductExportJson)
+	EVT_MENU(ProductView::ID_PRODUCT_CONTEXT_EXPORT_EXCEL, ProductView::OnProductExportExcel)
 	EVT_ERASE_BACKGROUND(ProductView::OnEraseBackground)
 	EVT_LIST_COL_CLICK(ProductView::ID_INVENTORY_VIEW, ProductView::OnInventoryViewColClick)
 	EVT_TOOL(ProductView::ID_INVENTORY_VIEW_TOOL_ADD, ProductView::OnInventoryAddTool)
@@ -625,6 +626,8 @@ void ProductView::OnProductItemActivated(wxDataViewEvent& evt)
 		auto& row = ProductInstance::instance()[index];
 		if (mInventoryView->GetProductId() != nl::row_value<Products::id>(row)){
 			mInventoryView->LoadInventory(nl::row_value<Products::id>(row), nl::clock::now());
+		}else{
+			mInventoryView->LoadInventory(nl::clock::now());
 		}
 		InventoryPane.Show();
 		ShowInventoryToolBar(row);
@@ -652,6 +655,7 @@ void ProductView::OnProductContextMenu(wxDataViewEvent& evt)
 
 	wxMenu* sExportMenu = new wxMenu;
 	sExportMenu->Append(ID_PRODUCT_CONTEXT_EXPORT_JSON, "Json");
+	sExportMenu->Append(ID_PRODUCT_CONTEXT_EXPORT_EXCEL, "Excel");
 
 	auto export_m = menu->Append(ID_PRODUCT_CONTEXT_EXPORT, "Export", sExportMenu);
 
@@ -824,6 +828,43 @@ void ProductView::OnProductExportJson(wxCommandEvent& evt)
 	else {
 		wxMessageBox("No item selected to be exported; click select to export items", "Export data", wxICON_INFORMATION | wxOK);
 	}
+
+}
+
+void ProductView::OnProductExportExcel(wxCommandEvent& evt)
+{
+	wxFileDialog dialog(this, "Save Excel file", wxEmptyString, wxEmptyString, "Excel files (*.xlsx)|*.xlsx",
+		wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	if (dialog.ShowModal() == wxID_CANCEL) return;
+
+	auto filename = dialog.GetPath().ToStdString();
+	spdlog::get("log")->info("full path {}", filename);
+	auto full_path = fs::path(filename);
+	spdlog::get("log")->info("full path extension {}", full_path.extension().string());
+	if (full_path.extension() != ".xlsx") {
+		wxMessageBox("File extension is not compactable with .xlsx or .xls files", "Export Excel",
+			wxICON_INFORMATION | wxOK);
+		return;
+	}
+	ExportToExcel ex(full_path);
+	std::array<std::string_view, Products::column_count> col_names
+	{
+		Products::get_col_name<Products::id>(),
+		Products::get_col_name<Products::name>(),
+		Products::get_col_name<Products::package_size>(),
+		Products::get_col_name<Products::stock_count>(),
+		Products::get_col_name<Products::unit_price>(),
+		Products::get_col_name<Products::category_id>()
+	};
+	ex.PushWorkSheet("Products");
+	try {
+		ex.DumpRelationAsExecl(ProductInstance::instance(), col_names);
+	}
+	catch (const std::exception& exp) {
+		spdlog::get("log")->critical(exp.what());
+	}
+	ex.PopWorkSheet();
+	ex.Save();
 
 }
 
@@ -1063,6 +1104,7 @@ void ProductView::OnToJson(wxCommandEvent& evt)
 
 
 }
+
 
 void ProductView::InitJsonConverter()
 {

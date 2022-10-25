@@ -23,7 +23,7 @@
 #include "DetailView.h"
 #include "ExpiryView.h"
 #include "ListDisplayDialog.h"
-
+#include "ExportToExcel.h"
 
 #include <nl_uuid.h>
 
@@ -77,6 +77,7 @@ public:
 		ID_PRODUCT_CONTEXT_REMOVE,
 		ID_PRODUCT_CONTEXT_EXPORT,
 		ID_PRODUCT_CONTEXT_EXPORT_JSON,
+		ID_PRODUCT_CONTEXT_EXPORT_EXCEL,
 		ID_PRODUCT_CONTEXT_EDIT_BOX,
 		ID_EXPIRY_VIEW,
 		ID_SELECT_MULTIPLE,
@@ -140,6 +141,7 @@ private:
 	void OnUnSelectMultiple(wxCommandEvent& evt);
 	void OnPaneClose(wxAuiManagerEvent& evt);
 	void OnProductExportJson(wxCommandEvent& evt);
+	void OnProductExportExcel(wxCommandEvent& evt);
 
 	void DoSearch(const std::string& searchString);
 	void DoCategorySelect(const std::string& selected_category);

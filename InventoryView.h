@@ -14,6 +14,7 @@
 #include "DatabaseManger.h"
 #include "SearchAutoComplete.h"
 #include "InventoryDialog.h"
+#include "AppSettings.h"
 
 #include <nl_uuid.h>
 
@@ -45,6 +46,9 @@ protected:
 	virtual bool OnGetItemIsChecked(long item) const override;
 
 	void SetupImages();
+	bool GetColorCodeSetting();
+
+
 
 public:
 	void ResetProductInventoryList(std::uint64_t productID);

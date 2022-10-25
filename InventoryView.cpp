@@ -87,7 +87,7 @@ void InventoryView::CreateInventoryView()
 {
 	for (size_t i = 2; i < InventoryInstance::instance().get_column_count(); i++)
 	{
-		AppendColumn(InventoryInstance::instance().get_name(i));
+		AppendColumn(InventoryInstance::instance().get_name(i), wxLIST_FORMAT_CENTRE, 300);
 	}
 }
 
@@ -125,13 +125,23 @@ void InventoryView::AddInOrder(const Inventories::row_t& row)
 
 void InventoryView::CreateAttributes()
 {
-	mJustAdded = std::make_shared<wxListItemAttr>();
-	mQuantityIn = std::make_shared<wxListItemAttr>();
-	mQuantityOut = std::make_shared<wxListItemAttr>();
-	//TODO: GET COLORS FROM CONFIG, THAT SHOULD BE CONFIGURABLE FROM A COLOR PICKER
-	mJustAdded->SetBackgroundColour(wxColour(0, 255, 127));
-	mQuantityIn->SetBackgroundColour(wxColour(223, 255, 0));
-	mQuantityOut->SetBackgroundColour(wxColour(255, 127, 80));
+	wxConfig& config = AppSettingsInsntance::instance();
+	std::string_view Path = "/Products/Inventory/Attributes/ColorCode";
+	auto OldPath = config.GetPath();
+	if(config.Exists(Path.data())){
+		bool Color = false;
+		Color = config.ReadBool(Path.data(), Color);
+		if (Color) {
+			mJustAdded = std::make_shared<wxListItemAttr>();
+			mQuantityIn = std::make_shared<wxListItemAttr>();
+			mQuantityOut = std::make_shared<wxListItemAttr>();
+			//TODO: GET COLORS FROM CONFIG, THAT SHOULD BE CONFIGURABLE FROM A COLOR PICKER
+			mJustAdded->SetBackgroundColour(wxColour(0, 255, 127));
+			mQuantityIn->SetBackgroundColour(wxColour(223, 255, 0));
+			mQuantityOut->SetBackgroundColour(wxColour(255, 127, 80));
+		}
+	}
+	config.SetPath(OldPath);
 }
 
 void InventoryView::CreateLoadAllQuery()

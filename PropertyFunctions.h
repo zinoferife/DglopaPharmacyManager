@@ -1,5 +1,6 @@
 #pragma once
 #include <wx/variant.h>
+#include <fmt/format.h>
 
 template<typename Instance>
 void IntProperty(const wxVariant& value, size_t column, Instance& instance, typename Instance::iterator iter)
@@ -21,6 +22,16 @@ void LongLongProperty(const wxVariant& value, size_t column, Instance& instance,
 	data.row_iterator = iter;
 	data.column = column;
 	data.column_value = static_cast<unsigned long long>(value.GetLongLong().GetValue());
+	instance.notify<nl::notifications::update>(data);
+}
+template<typename Instance>
+void FloatToStringProperty(const wxVariant& value, size_t column, Instance& instance, typename Instance::iterator iter)
+{
+	static_assert(nl::detail::is_relation_v<Instance>, "Instnace is not a relation");
+	typename Instance::notification_data data;
+	data.row_iterator = iter;
+	data.column = column;
+	data.column_value = fmt::format("{:.2f}", static_cast<double>(value.GetDouble()));
 	instance.notify<nl::notifications::update>(data);
 }
 

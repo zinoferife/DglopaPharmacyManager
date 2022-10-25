@@ -14,7 +14,10 @@
 #include <map>
 #include <utility>
 #include <string_view>
+#include <exception>
 
+
+#include "AppSettings.h"
 
 namespace fs = std::filesystem;
 namespace js = nlohmann;
@@ -25,7 +28,7 @@ class NetworkManager
 {
 
 public:
-	typedef std::pair<std::string, std::string>  service_addr_t;
+	typedef std::pair<std::string, std::string>  ServiceAddr_t;
 
 
 	NetworkManager();
@@ -48,10 +51,12 @@ public:
 
 	std::string_view GetServiceAddress(const std::string& serv_name) const;
 	std::string_view GetSerivePort(const std::string& serv_name) const;
-
-
+	const ServiceAddr_t& GetService(const std::string& serv_name) const;
+	void GetSettings();
+	void SetSettings();
 
 private:
+	ServiceAddr_t ParseServiceAddr(const std::string& str) const;
 	//the host of our remote serrvice
 	net::io_context mIoContext;
 	std::thread mNetThread;
@@ -62,7 +67,7 @@ private:
 	std::atomic_bool mStopCondition;
 
 	//holds the address of the services that PharmaOffice can connect to
-	std::map<std::string, service_addr_t> mServices;
+	std::map<std::string, ServiceAddr_t> mServices;
 
 	//things for staticstics 
 

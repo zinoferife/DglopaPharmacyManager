@@ -151,7 +151,7 @@ void PrescriptionView::CreatePrescriptionSourceChoice()
 			100,
 			this, 
 			wxPD_APP_MODAL | wxPD_CAN_ABORT);
-		std::chrono::milliseconds duration(3);
+		std::chrono::microseconds duration(3);
 		bool cont = true;
 		int i = 0;
 		do {
@@ -169,7 +169,7 @@ void PrescriptionView::CreatePrescriptionSourceChoice()
 		try {
 			auto string_data = future.get();
 			dialog.Update(100, fmt::format("Successful"));
-			OnPrscriptionSource(js::json::parse(string_data));
+			OnPrscriptionSource(js::json::parse(std::move(string_data)));
 		}
 		catch (const nl::session_error& error) {
 			const beast::error_code& ec = error.error_code();
@@ -332,7 +332,7 @@ void PrescriptionView::OnGetPrescriptionSources(wxCommandEvent& evt)
 			100,
 			this,
 			wxPD_APP_MODAL | wxPD_CAN_ABORT);
-		std::chrono::seconds duration(5);
+		std::chrono::milliseconds duration(5);
 		bool cont = true;
 		int i = 0;
 		do {
@@ -341,7 +341,7 @@ void PrescriptionView::OnGetPrescriptionSources(wxCommandEvent& evt)
 			if (!cont) {
 				if (wxMessageBox("Do really want to cancel",
 					"Prescription Source", wxICON_WARNING | wxYES_NO) == wxYES) {
-					sp->cancel();
+ 					sp->cancel();
 					break;
 				}
 			}
@@ -349,7 +349,7 @@ void PrescriptionView::OnGetPrescriptionSources(wxCommandEvent& evt)
 
 		try {
 			auto string_data = future.get();
-			OnPrscriptionSource(js::json::parse(string_data));
+			OnPrscriptionSource(js::json::parse(std::move(string_data)));
 		}
 		catch (const nl::session_error& error) {
 			const beast::error_code& ec = error.error_code();
